@@ -15,6 +15,7 @@ class MybrPlayer extends EventTarget {
         this._src = '';
         this._loadingPromise = null;
         this.onStatusChange = () => {};
+        this._endedTrackCount = 0; // Contatore per le tracce terminate
     }
 
     set volume(value) {
@@ -29,7 +30,17 @@ class MybrPlayer extends EventTarget {
     set loop(value) {
         this._loopEnabled = !!value;
         this.tracks.forEach(track => {
-            if (track.sourceNode) track.sourceNode.loop = this._loopEnabled;
+            if (track.sourceNode) {
+                track.sourceNode.loop = this._loopEnabled;
+                // Imposta loopStart e loopEnd anche qui se il loop viene abilitato/disabilitato a runtime
+                if (this._loopEnabled && this.loopEndSample > this.loopStartSample) {
+                    track.sourceNode.loopStart = this.loopStartSample / track.audioBuffer.sampleRate;
+                    track.sourceNode.loopEnd = this.loopEndSample / track.audioBuffer.sampleRate;
+                } else {
+                    track.sourceNode.loopStart = 0;
+                    track.sourceNode.loopEnd = 0;
+                }
+            }
         });
         this.onStatusChange(this._isPlaying ? 'In riproduzione' : (this._pausedTime > 0 ? 'In pausa' : 'Fermo'), this._loopEnabled);
     }
@@ -45,18 +56,8 @@ class MybrPlayer extends EventTarget {
     get currentTime() {
         if (!this.audioContext || this.tracks.length === 0 || !this.tracks[0].audioBuffer) return this._pausedTime;
         if (!this._isPlaying) return this._pausedTime;
-        const elapsed = this.audioContext.currentTime - this._playbackStartTime;
-        let current = this._pausedTime + elapsed;
-
-        if (this._loopEnabled && this.loopEndSample > this.loopStartSample && current >= (this.loopEndSample / this.tracks[0].audioBuffer.sampleRate)) {
-            const loopStartSec = this.loopStartSample / this.tracks[0].audioBuffer.sampleRate;
-            const loopEndSec = this.loopEndSample / this.tracks[0].audioBuffer.sampleRate;
-            const loopDuration = loopEndSec - loopStartSec;
-            if (loopDuration > 0) {
-                current = loopStartSec + ((current - loopStartSec) % loopDuration);
-            }
-        }
-        return current;
+        // Tempo lineare assoluto dell'AudioContext. Il loop visivo/acustico è gestito dalla sourceNode stessa.
+        return this._pausedTime + (this.audioContext.currentTime - this._playbackStartTime);
     }
 
     set src(url) {
@@ -77,7 +78,6 @@ class MybrPlayer extends EventTarget {
         return this._src;
     }
 
-    // Nuova funzione per impostare tutte le tracce a 0
     setAllTracksToZeroVolume() {
         for (const trackName in this.trackGainNodes) {
             if (this.trackGainNodes.hasOwnProperty(trackName)) {
@@ -98,7 +98,7 @@ class MybrPlayer extends EventTarget {
 
             const magicNumber = dataView.getUint32(offset, true); offset += 4;
             const numTracks = dataView.getUint8(offset); offset += 1;
-            this._loopEnabled = dataView.getUint8(offset) === 1; offset += 1;
+            this._loopEnabled = dataView.getUint8(offset) === 1; offset += 1; // Legge lo stato del loop dal file
             this.loopStartSample = dataView.getUint32(offset, true); offset += 4;
             this.loopEndSample = dataView.getUint32(offset, true); offset += 4;
 
@@ -143,7 +143,7 @@ class MybrPlayer extends EventTarget {
 
                     return {
                         audioBuffer,
-                        currentVolume: 1.0,
+                        currentVolume: 1.0, // Default volume, sarà sovrascritto dalla logica UI
                         name: header.trackName || `Traccia ${index + 1}`,
                         path: url + `#track${index}`,
                         gainNode
@@ -165,10 +165,9 @@ class MybrPlayer extends EventTarget {
                 this.trackGainNodes[track.name] = track.gainNode;
             });
 
-            // Chiama la nuova funzione per impostare tutte le tracce a 0
-            this.setAllTracksToZeroVolume();
-            // Imposta solo "main" a 1
-            this.setTrackVolume('main', 1);
+            // NOTA: Il reset dei volumi iniziale è ora gestito in index.html in selectTrack
+            // mybrPlayer.setTrackVolume('main', 1);
+            // FLAGS_CONFIG.forEach(flag => mybrPlayer.setTrackVolume(flag.id, 0));
 
             this.onStatusChange('Pronto', this._loopEnabled);
             return { loopEnabled: this._loopEnabled, loopStartSample: this.loopStartSample, loopEndSample: this.loopEndSample };
@@ -216,6 +215,7 @@ class MybrPlayer extends EventTarget {
             }
         });
         this._isPlaying = false;
+        this._endedTrackCount = 0; // Reset contatore quando in pausa
         this.onStatusChange('In pausa', this._loopEnabled);
         this.dispatchEvent(new Event('pause'));
     }
@@ -232,6 +232,7 @@ class MybrPlayer extends EventTarget {
         this._isPlaying = false;
         this._pausedTime = 0;
         this._playbackStartTime = 0;
+        this._endedTrackCount = 0; // Reset contatore quando stoppato
         this.onStatusChange('Fermo', this._loopEnabled);
         if (wasPlaying) this.dispatchEvent(new Event('ended'));
     }
@@ -243,6 +244,8 @@ class MybrPlayer extends EventTarget {
             this._mainGainNode.connect(this.audioContext.destination);
         }
 
+        this._endedTrackCount = 0; // Reset contatore prima di iniziare la riproduzione
+
         this.tracks.forEach((track) => {
             if (track.sourceNode) {
                 track.sourceNode.stop();
@@ -252,8 +255,17 @@ class MybrPlayer extends EventTarget {
             track.sourceNode.buffer = track.audioBuffer;
 
             track.sourceNode.loop = this._loopEnabled;
-            track.sourceNode.loopStart = this.loopStartSample / track.audioBuffer.sampleRate;
-            track.sourceNode.loopEnd = this.loopEndSample / track.audioBuffer.sampleRate;
+            // Imposta loopStart e loopEnd solo se il loop è abilitato e i valori sono validi
+            // Il check loopEndSample > loopStartSample è per evitare loop di durata zero o negativi
+            if (this._loopEnabled && this.loopEndSample > this.loopStartSample) {
+                track.sourceNode.loopStart = this.loopStartSample / track.audioBuffer.sampleRate;
+                track.sourceNode.loopEnd = this.loopEndSample / track.audioBuffer.sampleRate;
+            } else {
+                // Se il loop non è abilitato o i valori sono invalidi, imposta i valori di default
+                track.sourceNode.loopStart = 0;
+                // Imposta loopEnd alla durata totale del buffer se non in loop, per garantire che onended venga chiamato alla fine
+                track.sourceNode.loopEnd = track.audioBuffer.duration;
+            }
 
             if (!track.gainNode) {
                 track.gainNode = this.audioContext.createGain();
@@ -266,14 +278,13 @@ class MybrPlayer extends EventTarget {
             track.sourceNode.start(0, this._pausedTime);
 
             track.sourceNode.onended = () => {
+                // L'evento onended viene chiamato anche se il nodo è in loop e il loop finisce.
+                // Lo gestiamo solo se il player non è impostato per il loop globale.
                 if (!this._loopEnabled && this._isPlaying) {
-                    const allTracksEnded = this.tracks.every(t =>
-                        !t.sourceNode ||
-                        t.sourceNode.playbackState === AudioBufferSourceNode.ENDED_STATE ||
-                        t.sourceNode.buffer === null
-                    );
-                    if (allTracksEnded) {
-                         this.stop();
+                    this._endedTrackCount++;
+                    // Se tutte le tracce sono terminate e il player è ancora in riproduzione (non in loop)
+                    if (this._endedTrackCount >= this.tracks.length) {
+                        this.stop();
                     }
                 }
             };

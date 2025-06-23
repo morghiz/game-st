@@ -107,10 +107,32 @@
               flag.isActive = true;
             }
             saveFlagsState();
+            // Applica immediatamente i volumi dopo il cambio di stato della flag
+            applyTrackVolumes();
             updateUI(mybrPlayer.loop);
           });
         }
       });
+
+      function applyTrackVolumes() {
+        mybrPlayer.setTrackVolume('main', 1); // La traccia principale è sempre a 1 di default
+        FLAGS_CONFIG.forEach(flag => mybrPlayer.setTrackVolume(flag.id, 0)); // Tutte le tracce flag a 0
+
+        let activeFlagId = null;
+        if (currentSelectedTrack) {
+          FLAGS_CONFIG.forEach(flag => {
+            const supportsFlag = currentSelectedTrack.flags && currentSelectedTrack.flags.includes(flag.id);
+            if (flag.isActive && supportsFlag) {
+              activeFlagId = flag.id;
+            }
+          });
+        }
+
+        if (activeFlagId) {
+          mybrPlayer.setTrackVolume('main', 0);
+          mybrPlayer.setTrackVolume(activeFlagId, 1);
+        }
+      }
 
       function updateUI(playerLoopState) {
         const hasTracks = mybrPlayer.tracks.length > 0;
@@ -118,7 +140,6 @@
         playPauseBtnOverlay.disabled = !hasTracks;
         toggleLoopBtn.disabled = !hasTracks;
 
-        let activeFlagId = null;
         FLAGS_CONFIG.forEach(flag => {
           const supportsFlag = currentSelectedTrack && currentSelectedTrack.flags && currentSelectedTrack.flags.includes(flag.id);
           if (flag.element) {
@@ -127,28 +148,11 @@
               flag.element.disabled = !hasTracks;
               flag.element.style.color = flag.isActive ? "#1DB954" : "#ffffff";
             } else {
-              // Se la traccia non supporta la flag, il pulsante è nascosto e disabilitato
               flag.element.classList.add("hidden");
               flag.element.disabled = true;
-              // IMPORTANTE: NON modificare flag.isActive qui.
-              // Lo stato isActive viene gestito SOLO tramite il click del pulsante.
             }
           }
-          if (flag.isActive && supportsFlag) {
-            activeFlagId = flag.id;
-          }
         });
-
-        // Imposta i volumi delle tracce
-        mybrPlayer.setTrackVolume('main', 1); // La traccia principale è sempre a 1 di default
-        FLAGS_CONFIG.forEach(flag => mybrPlayer.setTrackVolume(flag.id, 0)); // Tutte le tracce flag a 0
-
-        if (activeFlagId) {
-          // Se c'è una flag attiva e supportata dal brano, disattiva la traccia principale
-          // e attiva la traccia della flag.
-          mybrPlayer.setTrackVolume('main', 0);
-          mybrPlayer.setTrackVolume(activeFlagId, 1);
-        }
 
         playPauseBtn.innerHTML = mybrPlayer._isPlaying
           ? '<i class="fas fa-pause"></i>'
@@ -194,16 +198,14 @@
       });
 
       mybrPlayer.addEventListener("ended", () => {
+        // L'evento 'ended' per il player MybrPlayer si verifica solo quando la riproduzione è *realmente* finita (non in loop)
         if (!mybrPlayer.loop) {
-          // Quando un brano non in loop finisce, il player si ferma.
-          // NON resettare lo stato delle flag qui.
-          // Le flag mantengono il loro ultimo stato impostato dall'utente.
-          currentSelectedTrack = null; // Il brano corrente è terminato
-          updateUI(mybrPlayer.loop); // Aggiorna l'UI (nasconde/disabilita i pulsanti flag se non c'è traccia)
-          playingTrackTitle.querySelector('span').textContent = "Not playing";
-          playingGameTitle.querySelector('span').textContent = "Select a track";
-          checkTextOverflow(playingTrackTitle);
-          checkTextOverflow(playingGameTitle);
+            currentSelectedTrack = null; // Il brano corrente è terminato
+            updateUI(mybrPlayer.loop); // Aggiorna l'UI (nasconde/disabilita i pulsanti flag se non c'è traccia)
+            playingTrackTitle.querySelector('span').textContent = "Not playing";
+            playingGameTitle.querySelector('span').textContent = "Select a track";
+            checkTextOverflow(playingTrackTitle);
+            checkTextOverflow(playingGameTitle);
         }
       });
       mybrPlayer.addEventListener("loadstart", () => {});
@@ -411,6 +413,9 @@
         try {
           mybrPlayer.src = trackCardElement.dataset.mybrFile;
           await mybrPlayer._loadingPromise;
+          
+          // Dopo aver caricato un nuovo brano, resetta i volumi e applica le flag
+          applyTrackVolumes(); 
           
           updateUI(mybrPlayer.loop); 
           await mybrPlayer.play();
