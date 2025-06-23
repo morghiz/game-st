@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riproduttore .mybr</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c;
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            background-color: #2d3748;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            max-width: 600px;
+            width: 100%;
+        }
+        input[type="file"] {
+            display: block;
+            margin-bottom: 1.5rem;
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #4a5568;
+            border-radius: 0.375rem;
+            background-color: #4a5568;
+            color: #e2e8f0;
+        }
+        .button-group button {
+            background-color: #4299e1;
+            color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            cursor: pointer;
+            margin-right: 0.75rem;
+        }
+        .button-group button:hover {
+            background-color: #3182ce;
+        }
+        .button-group button:disabled {
+            background-color: #a0aec0;
+            cursor: not-allowed;
+        }
+        .info-panel {
+            background-color: #4a5568;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1.5rem;
+        }
+        .info-panel p {
+            margin-bottom: 0.5rem;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #4a5568;
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            margin-top: 1rem;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4299e1;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4299e1;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .track-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #4a5568;
+        }
+        .track-list-item:last-child {
+            border-bottom: none;
+        }
+        .track-name {
+            flex-grow: 1;
+            margin-right: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .track-volume-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-6">Riproduttore .mybr</h1>
+
+        <input type="file" id="fileInput" accept=".mybr">
+
+        <div class="button-group flex justify-center mb-4">
+            <button id="playBtn" disabled>Riproduci</button>
+            <button id="pauseBtn" disabled>Pausa</button>
+            <button id="stopBtn" disabled>Ferma</button>
+            <button id="toggleLoopBtn" disabled>Loop: OFF</button>
+        </div>
+
+        <div class="mb-4">
+            <label for="volumeSlider" class="block text-sm font-semibold mb-2">Volume Master: <span id="volumeValue">100%</span></label>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" disabled>
+        </div>
+
+        <div class="info-panel text-sm mb-4">
+            <p>Stato: <span id="statusText" class="font-semibold">In attesa del file...</span></p>
+            <p>Tempo Corrente: <span id="currentTimeText" class="font-semibold">0:00</span> / Durata: <span id="durationText" class="font-semibold">0:00</span></p>
+            <p>Loop abilitato (da file): <span id="loopEnabledText" class="font-semibold">N/D</span></p>
+            <p>Inizio loop (campioni): <span id="loopStartText" class="font-semibold">N/D</span></p>
+            <p>Fine loop (campioni): <span id="loopEndText" class="font-semibold">N/D</span></p>
+        </div>
+
+        <h2 class="text-xl font-bold mb-3">Controlli Tracce Individuali:</h2>
+        <div id="trackControlsContainer" class="info-panel">
+            <p id="noTracksMessage">Nessuna traccia caricata.</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { MybrPlayer } from './mybr-player-library.js';
+
+        const mybrPlayer = new MybrPlayer();
+
+        const fileInput = document.getElementById('fileInput');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const toggleLoopBtn = document.getElementById('toggleLoopBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+        const statusText = document.getElementById('statusText');
+        const currentTimeText = document.getElementById('currentTimeText');
+        const durationText = document.getElementById('durationText');
+        const loopEnabledText = document.getElementById('loopEnabledText');
+        const loopStartText = document.getElementById('loopStartText');
+        const loopEndText = document.getElementById('loopEndText');
+        const trackControlsContainer = document.getElementById('trackControlsContainer');
+        const noTracksMessage = document.getElementById('noTracksMessage');
+
+        let intervalId = null;
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        function updateUI(status, loopState) {
+            statusText.textContent = status;
+            const hasTracks = mybrPlayer.tracks.length > 0;
+
+            playBtn.disabled = !hasTracks || mybrPlayer._isPlaying;
+            pauseBtn.disabled = !mybrPlayer._isPlaying;
+            stopBtn.disabled = !hasTracks && !mybrPlayer._isPlaying;
+            toggleLoopBtn.disabled = !hasTracks;
+            volumeSlider.disabled = !hasTracks;
+
+            // Display current player loop state (can be toggled by user)
+            toggleLoopBtn.textContent = `Loop: ${loopState ? 'ON' : 'OFF'}`;
+
+            if (hasTracks) {
+                durationText.textContent = formatTime(mybrPlayer.duration);
+            } else {
+                durationText.textContent = '0:00';
+            }
+
+            if (status === 'Fermo' || status === 'In attesa del file...' || status === 'Caricamento...' || status.startsWith('Erro:')) {
+                currentTimeText.textContent = '0:00';
+                clearInterval(intervalId);
+                intervalId = null;
+            } else if (status === 'In riproduzione' && !intervalId) {
+                intervalId = setInterval(() => {
+                    currentTimeText.textContent = formatTime(mybrPlayer.currentTime);
+                }, 100);
+            } else if (status === 'In pausa') {
+                 clearInterval(intervalId);
+                 intervalId = null;
+            }
+            updateTrackVolumeControls();
+        }
+
+        function updateTrackVolumeControls() {
+            trackControlsContainer.innerHTML = '';
+            if (mybrPlayer.tracks.length === 0) {
+                noTracksMessage.style.display = 'block';
+                return;
+            }
+            noTracksMessage.style.display = 'none';
+
+            const trackNames = mybrPlayer.getTrackNames();
+            mybrPlayer.tracks.forEach((track, index) => {
+                const trackItemDiv = document.createElement('div');
+                trackItemDiv.className = 'track-list-item';
+                
+                const trackNameSpan = document.createElement('span');
+                trackNameSpan.className = 'track-name';
+                trackNameSpan.textContent = trackNames[index];
+                
+                const volumeControlDiv = document.createElement('div');
+                volumeControlDiv.className = 'track-volume-control';
+                
+                const volumeLabel = document.createElement('span');
+                volumeLabel.textContent = 'Vol:';
+                
+                const trackVolumeSlider = document.createElement('input');
+                trackVolumeSlider.type = 'range';
+                trackVolumeSlider.min = '0';
+                trackVolumeSlider.max = '1';
+                trackVolumeSlider.step = '0.01';
+                trackVolumeSlider.value = mybrPlayer.getTrackVolume(index);
+                trackVolumeSlider.id = `trackVolumeSlider-${index}`;
+                trackVolumeSlider.disabled = !mybrPlayer.tracks.length;
+                trackVolumeSlider.style.width = '80px';
+                trackVolumeSlider.style.marginTop = '0';
+
+                const trackVolumeValueSpan = document.createElement('span');
+                trackVolumeValueSpan.textContent = `${Math.round(mybrPlayer.getTrackVolume(index) * 100)}%`;
+                trackVolumeValueSpan.style.minWidth = '40px';
+
+                trackVolumeSlider.addEventListener('input', (event) => {
+                    const newVolume = parseFloat(event.target.value);
+                    mybrPlayer.setTrackVolume(index, newVolume);
+                    trackVolumeValueSpan.textContent = `${Math.round(newVolume * 100)}%`;
+                });
+
+                volumeControlDiv.appendChild(volumeLabel);
+                volumeControlDiv.appendChild(trackVolumeSlider);
+                volumeControlDiv.appendChild(trackVolumeValueSpan);
+
+                trackItemDiv.appendChild(trackNameSpan);
+                trackItemDiv.appendChild(volumeControlDiv);
+                trackControlsContainer.appendChild(trackItemDiv);
+            });
+        }
+
+
+        mybrPlayer.setStatusCallback((status, loopState) => {
+            updateUI(status, loopState);
+            const loopStatus = mybrPlayer.getLoopStatus();
+            // This reflects the loop status directly read from the .mybr file header
+            loopEnabledText.textContent = loopStatus.enabled ? 'Sì' : 'No';
+            loopStartText.textContent = loopStatus.start;
+            loopEndText.textContent = loopStatus.end;
+            
+            if (status === 'Pronto') {
+                // When a new file is loaded and ready, reset track volumes to initial state
+                mybrPlayer.tracks.forEach((track, idx) => {
+                    mybrPlayer.setTrackVolume(idx, idx === 0 ? 1.0 : 0.0);
+                });
+                // Also, update the player's internal loop state to match what's in the file
+                // This ensures the toggleLoopBtn text reflects the file's setting initially
+                mybrPlayer.loop = loopStatus.enabled; 
+                updateTrackVolumeControls();
+            }
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const originalFileName = file.name.replace(/\.mybr$/i, ''); 
+                mybrPlayer._src = originalFileName;
+                const fileUrl = URL.createObjectURL(file);
+                mybrPlayer.src = fileUrl;
+            }
+        });
+
+        playBtn.addEventListener('click', async () => {
+            try {
+                await mybrPlayer.play();
+            } catch (e) {
+                console.error('Errore durante la riproduzione:', e);
+                statusText.textContent = `Errore riproduzione: ${e.message}`;
+            }
+        });
+
+        pauseBtn.addEventListener('click', () => mybrPlayer.pause());
+        stopBtn.addEventListener('click', () => mybrPlayer.stop());
+
+        // Toggle the *player's current loop state*, which might differ from the file's initial state
+        toggleLoopBtn.addEventListener('click', () => {
+            mybrPlayer.loop = !mybrPlayer.loop;
+            // The setStatusCallback will be triggered by the loop setter, updating the UI
+        });
+
+        volumeSlider.addEventListener('input', (event) => {
+            mybrPlayer.volume = parseFloat(event.target.value);
+            volumeValue.textContent = `${Math.round(mybrPlayer.volume * 100)}%`;
+        });
+
+        mybrPlayer.addEventListener('play', () => console.log('Player: evento play'));
+        mybrPlayer.addEventListener('pause', () => console.log('Player: evento pause'));
+        mybrPlayer.addEventListener('ended', () => console.log('Player: evento ended'));
+        mybrPlayer.addEventListener('loadstart', () => console.log('Player: evento loadstart - Inizio caricamento'));
+        mybrPlayer.addEventListener('canplaythrough', () => console.log('Player: evento canplaythrough - Pronto per la riproduzione senza interruzioni'));
+        mybrPlayer.addEventListener('error', () => console.log('Player: evento error - Si è verificato un errore'));
+
+        updateUI('In attesa del file...', mybrPlayer.loop);
+        volumeValue.textContent = `${Math.round(mybrPlayer.volume * 100)}%`;
+        updateTrackVolumeControls();
+    </script>
+</body>
+</html>
