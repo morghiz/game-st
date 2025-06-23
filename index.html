@@ -224,7 +224,7 @@
           loadingProgress.textContent = '0%';
       });
       mybrPlayer.addEventListener("loadprogress", (e) => {
-          loadingProgress.textContent = `${Math.round(e.detail.progress)}%`;
+          loadingProgress.textContent = `${Math.min(Math.round(e.detail.progress), 100)}%`;
       });
       mybrPlayer.addEventListener("canplaythrough", () => {
           loader.classList.add('hidden');
