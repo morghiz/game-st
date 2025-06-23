@@ -1,332 +1,532 @@
 <!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riproduttore .mybr</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #1a202c;
-            color: #e2e8f0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 1rem;
-        }
-        .container {
-            background-color: #2d3748;
-            padding: 2rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            max-width: 600px;
-            width: 100%;
-        }
-        input[type="file"] {
-            display: block;
-            margin-bottom: 1.5rem;
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid #4a5568;
-            border-radius: 0.375rem;
-            background-color: #4a5568;
-            color: #e2e8f0;
-        }
-        .button-group button {
-            background-color: #4299e1;
-            color: white;
-            padding: 0.75rem 1.25rem;
-            border-radius: 0.5rem;
-            font-weight: bold;
-            transition: background-color 0.2s;
-            cursor: pointer;
-            margin-right: 0.75rem;
-        }
-        .button-group button:hover {
-            background-color: #3182ce;
-        }
-        .button-group button:disabled {
-            background-color: #a0aec0;
-            cursor: not-allowed;
-        }
-        .info-panel {
-            background-color: #4a5568;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-top: 1.5rem;
-        }
-        .info-panel p {
-            margin-bottom: 0.5rem;
-        }
-        input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 8px;
-            background: #4a5568;
-            border-radius: 5px;
-            outline: none;
-            opacity: 0.7;
-            transition: opacity .2s;
-            margin-top: 1rem;
-        }
-        input[type="range"]:hover {
-            opacity: 1;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            background: #4299e1;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-        input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            background: #4299e1;
-            border-radius: 50%;
-            cursor: pointer;
-        }
-        .track-list-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #4a5568;
-        }
-        .track-list-item:last-child {
-            border-bottom: none;
-        }
-        .track-name {
-            flex-grow: 1;
-            margin-right: 1rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .track-volume-control {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1 class="text-3xl font-bold text-center mb-6">Riproduttore .mybr</h1>
-
-        <input type="file" id="fileInput" accept=".mybr">
-
-        <div class="button-group flex justify-center mb-4">
-            <button id="playBtn" disabled>Riproduci</button>
-            <button id="pauseBtn" disabled>Pausa</button>
-            <button id="stopBtn" disabled>Ferma</button>
-            <button id="toggleLoopBtn" disabled>Loop: OFF</button>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Game Soundtrack Player</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div class="main-content">
+      <div class="header">
+        <div id="breadcrumbs" class="breadcrumbs">
+              <i class="fas fa-home"></i></div>
+        <div></div>
+      </div>
+      <div class="content-area">
+        <div id="dynamicContent" class="content-grid">
+          <p id="initialMessage">Select a game from the list above.</p>
         </div>
-
-        <div class="mb-4">
-            <label for="volumeSlider" class="block text-sm font-semibold mb-2">Volume Master: <span id="volumeValue">100%</span></label>
-            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1" disabled>
+      </div>
+      <div class="player-bar">
+        <div class="player-left">
+          <div class="cover-container">
+            <img id="currentTrackCover" src="https://placehold.co/150x150" alt="Album Cover" class="track-cover-small"/>
+            <button id="playPauseBtnOverlay" class="play-overlay" disabled title="Play/Pause">
+              <i class="fas fa-play"></i>
+            </button>
+          </div>
+          <div id="currentTrackDisplay">
+            <p id="playingTrackTitle"><span>Not playing</span></p>
+            <p id="playingGameTitle"><span>Select a track</span></p>
+          </div>
         </div>
-
-        <div class="info-panel text-sm mb-4">
-            <p>Stato: <span id="statusText" class="font-semibold">In attesa del file...</span></p>
-            <p>Tempo Corrente: <span id="currentTimeText" class="font-semibold">0:00</span> / Durata: <span id="durationText" class="font-semibold">0:00</span></p>
-            <p>Loop abilitato (da file): <span id="loopEnabledText" class="font-semibold">N/D</span></p>
-            <p>Inizio loop (campioni): <span id="loopStartText" class="font-semibold">N/D</span></p>
-            <p>Fine loop (campioni): <span id="loopEndText" class="font-semibold">N/D</span></p>
+        <div class="player-right">
+          <div class="player-controls">
+            <button id="playPauseBtn" disabled title="Play/Pause">
+              <i class="fas fa-play"></i>
+            </button>
+            <button id="toggleLoopBtn" disabled title="Toggle Player Loop">
+              <i class="fas fa-repeat"></i>
+            </button>
+            <button id="toggle8bitBtn" class="hidden" disabled title="Toggle 8-bit Mode">
+              <i class="fas fa-gamepad"></i>
+            </button>
+            <button id="toggleWaterBtn" class="hidden" disabled title="Toggle Water Mode">
+              <i class="fas fa-water"></i>
+            </button>
+          </div>
         </div>
-
-        <h2 class="text-xl font-bold mb-3">Controlli Tracce Individuali:</h2>
-        <div id="trackControlsContainer" class="info-panel">
-            <p id="noTracksMessage">Nessuna traccia caricata.</p>
-        </div>
+      </div>
     </div>
-
     <script type="module">
-        import { MybrPlayer } from './mybr-player-library.js';
+      import { MybrPlayer } from "./mybr-player-library.js";
+      const mybrPlayer = new MybrPlayer();
+      const playPauseBtn = document.getElementById("playPauseBtn");
+      const playPauseBtnOverlay = document.getElementById("playPauseBtnOverlay");
+      const toggleLoopBtn = document.getElementById("toggleLoopBtn");
+      const dynamicContent = document.getElementById("dynamicContent");
+      const initialMessage = document.getElementById("initialMessage");
+      const breadcrumbs = document.getElementById("breadcrumbs");
+      const playingTrackTitle = document.getElementById("playingTrackTitle");
+      const playingGameTitle = document.getElementById("playingGameTitle");
+      const currentTrackCover = document.getElementById("currentTrackCover");
+      let currentData = null;
+      let currentSelectedGame = null;
+      let currentSelectedTrack = null;
+      const AUDIO_BASE_PATH = "./audio/";
+      const COVERS_BASE_PATH = "./covers/";
+      const DEFAULT_COVER_PLACEHOLDER = "https://placehold.co/150x150";
 
-        const mybrPlayer = new MybrPlayer();
-
-        const fileInput = document.getElementById('fileInput');
-        const playBtn = document.getElementById('playBtn');
-        const pauseBtn = document.getElementById('pauseBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const toggleLoopBtn = document.getElementById('toggleLoopBtn');
-        const volumeSlider = document.getElementById('volumeSlider');
-        const volumeValue = document.getElementById('volumeValue');
-        const statusText = document.getElementById('statusText');
-        const currentTimeText = document.getElementById('currentTimeText');
-        const durationText = document.getElementById('durationText');
-        const loopEnabledText = document.getElementById('loopEnabledText');
-        const loopStartText = document.getElementById('loopStartText');
-        const loopEndText = document.getElementById('loopEndText');
-        const trackControlsContainer = document.getElementById('trackControlsContainer');
-        const noTracksMessage = document.getElementById('noTracksMessage');
-
-        let intervalId = null;
-
-        function formatTime(seconds) {
-            const minutes = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+      function getFlagStateFromLocalStorage(id) {
+        const savedState = localStorage.getItem('flagsState');
+        if (savedState) {
+          try {
+            const parsedState = JSON.parse(savedState);
+            const flag = parsedState.find(f => f.id === id);
+            return flag ? flag.isActive : false;
+          } catch (e) {
+            console.error("Error parsing flags state from localStorage:", e);
+          }
         }
+        return false;
+      }
 
-        function updateUI(status, loopState) {
-            statusText.textContent = status;
-            const hasTracks = mybrPlayer.tracks.length > 0;
+      const FLAGS_CONFIG = [
+        { id: "8bit", buttonId: "toggle8bitBtn", iconClass: "fas fa-gamepad", isActive: getFlagStateFromLocalStorage("8bit") },
+        { id: "water", buttonId: "toggleWaterBtn", iconClass: "fas fa-water", isActive: getFlagStateFromLocalStorage("water") }
+      ];
 
-            playBtn.disabled = !hasTracks || mybrPlayer._isPlaying;
-            pauseBtn.disabled = !mybrPlayer._isPlaying;
-            stopBtn.disabled = !hasTracks && !mybrPlayer._isPlaying;
-            toggleLoopBtn.disabled = !hasTracks;
-            volumeSlider.disabled = !hasTracks;
+      function saveFlagsState() {
+        const state = FLAGS_CONFIG.map(flag => ({ id: flag.id, isActive: flag.isActive }));
+        localStorage.setItem('flagsState', JSON.stringify(state));
+      }
 
-            // Display current player loop state (can be toggled by user)
-            toggleLoopBtn.textContent = `Loop: ${loopState ? 'ON' : 'OFF'}`;
+      FLAGS_CONFIG.forEach(flag => {
+        flag.element = document.getElementById(flag.buttonId);
+        if (flag.element) {
+          flag.element.addEventListener("click", () => {
+            const wasActive = flag.isActive;
+            // Disattiva tutte le altre flag solo se questa non era già attiva
+            FLAGS_CONFIG.forEach(f => f.isActive = false);
+            if (!wasActive) {
+              flag.isActive = true;
+            }
+            saveFlagsState();
+            updateUI(mybrPlayer.loop);
+          });
+        }
+      });
 
-            if (hasTracks) {
-                durationText.textContent = formatTime(mybrPlayer.duration);
+      function updateUI(playerLoopState) {
+        const hasTracks = mybrPlayer.tracks.length > 0;
+        playPauseBtn.disabled = !hasTracks;
+        playPauseBtnOverlay.disabled = !hasTracks;
+        toggleLoopBtn.disabled = !hasTracks;
+
+        let activeFlagId = null;
+        FLAGS_CONFIG.forEach(flag => {
+          const supportsFlag = currentSelectedTrack && currentSelectedTrack.flags && currentSelectedTrack.flags.includes(flag.id);
+          if (flag.element) {
+            if (supportsFlag) {
+              flag.element.classList.remove("hidden");
+              flag.element.disabled = !hasTracks;
+              flag.element.style.color = flag.isActive ? "#1DB954" : "#ffffff";
             } else {
-                durationText.textContent = '0:00';
+              // Se la traccia non supporta la flag, il pulsante è nascosto e disabilitato
+              flag.element.classList.add("hidden");
+              flag.element.disabled = true;
+              // IMPORTANTE: NON modificare flag.isActive qui.
+              // Lo stato isActive viene gestito SOLO tramite il click del pulsante.
             }
+          }
+          if (flag.isActive && supportsFlag) {
+            activeFlagId = flag.id;
+          }
+        });
 
-            if (status === 'Fermo' || status === 'In attesa del file...' || status === 'Caricamento...' || status.startsWith('Erro:')) {
-                currentTimeText.textContent = '0:00';
-                clearInterval(intervalId);
-                intervalId = null;
-            } else if (status === 'In riproduzione' && !intervalId) {
-                intervalId = setInterval(() => {
-                    currentTimeText.textContent = formatTime(mybrPlayer.currentTime);
-                }, 100);
-            } else if (status === 'In pausa') {
-                 clearInterval(intervalId);
-                 intervalId = null;
-            }
-            updateTrackVolumeControls();
+        // Imposta i volumi delle tracce
+        mybrPlayer.setTrackVolume('main', 1); // La traccia principale è sempre a 1 di default
+        FLAGS_CONFIG.forEach(flag => mybrPlayer.setTrackVolume(flag.id, 0)); // Tutte le tracce flag a 0
+
+        if (activeFlagId) {
+          // Se c'è una flag attiva e supportata dal brano, disattiva la traccia principale
+          // e attiva la traccia della flag.
+          mybrPlayer.setTrackVolume('main', 0);
+          mybrPlayer.setTrackVolume(activeFlagId, 1);
         }
 
-        function updateTrackVolumeControls() {
-            trackControlsContainer.innerHTML = '';
-            if (mybrPlayer.tracks.length === 0) {
-                noTracksMessage.style.display = 'block';
+        playPauseBtn.innerHTML = mybrPlayer._isPlaying
+          ? '<i class="fas fa-pause"></i>'
+          : '<i class="fas fa-play"></i>';
+        playPauseBtnOverlay.innerHTML = mybrPlayer._isPlaying
+          ? '<i class="fas fa-pause"></i>'
+          : '<i class="fas fa-play"></i>';
+        toggleLoopBtn.style.color = playerLoopState ? "#1DB954" : "#ffffff";
+        
+        if (!mybrPlayer._isPlaying && !currentSelectedTrack) {
+          currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+        }
+      }
+
+      mybrPlayer.setStatusCallback((status, playerLoopState) => {
+        updateUI(playerLoopState);
+      });
+
+      const commonPlayPauseHandler = async () => {
+        if (mybrPlayer._isPlaying) {
+          mybrPlayer.pause();
+        } else {
+          try {
+            await mybrPlayer.play();
+          } catch (e) {
+            console.error("Error during playback:", e);
+          }
+        }
+      };
+      playPauseBtn.addEventListener("click", commonPlayPauseHandler);
+      playPauseBtnOverlay.addEventListener("click", commonPlayPauseHandler);
+
+      toggleLoopBtn.addEventListener("click", () => {
+        mybrPlayer.loop = !mybrPlayer.loop;
+      });
+
+      mybrPlayer.addEventListener("play", () => {
+        updateUI(mybrPlayer.loop);
+      });
+
+      mybrPlayer.addEventListener("pause", () => {
+        updateUI(mybrPlayer.loop);
+      });
+
+      mybrPlayer.addEventListener("ended", () => {
+        if (!mybrPlayer.loop) {
+          // Quando un brano non in loop finisce, il player si ferma.
+          // NON resettare lo stato delle flag qui.
+          // Le flag mantengono il loro ultimo stato impostato dall'utente.
+          currentSelectedTrack = null; // Il brano corrente è terminato
+          updateUI(mybrPlayer.loop); // Aggiorna l'UI (nasconde/disabilita i pulsanti flag se non c'è traccia)
+          playingTrackTitle.querySelector('span').textContent = "Not playing";
+          playingGameTitle.querySelector('span').textContent = "Select a track";
+          checkTextOverflow(playingTrackTitle);
+          checkTextOverflow(playingGameTitle);
+        }
+      });
+      mybrPlayer.addEventListener("loadstart", () => {});
+      mybrPlayer.addEventListener("canplaythrough", () => {});
+      mybrPlayer.addEventListener("error", (e) => {
+        console.error("Player: error event - An error occurred", e);
+      });
+
+      function checkTextOverflow(parentElement) {
+          const textSpan = parentElement.querySelector('span');
+          if (textSpan) {
+              if (textSpan.offsetParent === null) {
+                parentElement.classList.remove('marquee-active');
+                textSpan.style.transform = 'translateX(0)';
                 return;
+              }
+              if (textSpan.scrollWidth > parentElement.clientWidth) {
+                  parentElement.classList.add('marquee-active');
+              } else {
+                  parentElement.classList.remove('marquee-active');
+                  textSpan.style.transform = 'translateX(0)';
+              }
+          }
+      }
+
+      async function loadSoundtrackData() {
+        try {
+          const response = await fetch("data.json");
+          if (!response.ok)
+            throw new Error(`HTTP error! status: ${response.status}`);
+          currentData = await response.json();
+          checkUrlAndNavigate();
+        } catch (e) {
+          console.error("Failed to load soundtrack data:", e);
+          dynamicContent.innerHTML =
+            '<p style="color:#ef4444;text-align:center;padding:2.5rem 0;">Error loading data.</p>';
+        }
+      }
+
+      function generateCoverPath(item, type, gameId = null, categoryPath = []) {
+        let pathSegments = [];
+        if (gameId) {
+            pathSegments.push(gameId);
+        }
+        if (categoryPath.length > 0) {
+            pathSegments.push(...categoryPath);
+        }
+        if (type === 'game' && item && item.id) {
+            return `${COVERS_BASE_PATH}${item.id}.png`;
+        }
+        return `${COVERS_BASE_PATH}${pathSegments.join("/")}/${item.id}.png`;
+      }
+
+      function generateAudioPath(track, gameId, categoryPath = []) {
+        let pathSegments = [];
+        pathSegments.push(gameId);
+        if (categoryPath.length > 0) {
+            pathSegments.push(...categoryPath);
+        }
+        pathSegments.push(track.id);
+        return `${AUDIO_BASE_PATH}${pathSegments.join("/")}.mybr`;
+      }
+
+      function createContentCard(item, type, gameId = null, categoryPath = [], gameTitle = null) {
+        const card = document.createElement("div");
+        card.className = "content-card";
+        const imageContainer = document.createElement("div");
+        imageContainer.className = "image-square-container";
+        const img = document.createElement("img");
+        const imageSource = generateCoverPath(item, type, gameId, categoryPath);
+        img.src = imageSource;
+        img.alt = item.title || item.name;
+        img.onerror = () => {
+          if (gameId) {
+            img.src = `${COVERS_BASE_PATH}${gameId}.png`;
+            img.onerror = () => (img.src = DEFAULT_COVER_PLACEHOLDER);
+          } else {
+            img.src = DEFAULT_COVER_PLACEHOLDER;
+          }
+        };
+        imageContainer.appendChild(img);
+        card.appendChild(imageContainer);
+        const bodyDiv = document.createElement("div");
+        bodyDiv.className = "content-card-body";
+        const title = document.createElement("p");
+        title.className = "title";
+        title.textContent = item.title || item.name;
+        bodyDiv.appendChild(title);
+        if (type === "track" && gameTitle) {
+          const subtitle = document.createElement("p");
+          subtitle.className = "subtitle";
+          subtitle.textContent = gameTitle;
+          bodyDiv.appendChild(subtitle);
+        }
+        card.appendChild(bodyDiv);
+        return card;
+      }
+
+      function displayGamesAsCards(games) {
+        initialMessage.style.display = "none";
+        dynamicContent.innerHTML = "";
+        games.forEach((game) => {
+          const gameCard = createContentCard(game, "game", game.id);
+          gameCard.dataset.gameId = game.id;
+          gameCard.addEventListener("click", () => {
+            clearSelection();
+            gameCard.classList.add("selected");
+            navigateTo([game.id]);
+          });
+          dynamicContent.appendChild(gameCard);
+        });
+      }
+
+      function clearSelection() {
+        document
+          .querySelectorAll(".content-card.selected")
+          .forEach((el) => el.classList.remove("selected"));
+      }
+
+      function findItemInStructure(pathSegments) {
+        let currentLevel = currentData.games;
+        let foundItem = null;
+        let currentPathObjects = [];
+        let gameIdForAudio = null;
+        let categoryPathForAudio = [];
+
+        for (let i = 0; i < pathSegments.length; i++) {
+            const segmentId = pathSegments[i];
+            let item = null;
+
+            if (i === 0) {
+                item = currentLevel.find(g => g.id === segmentId);
+                if (item) {
+                    gameIdForAudio = item.id;
+                    currentSelectedGame = item;
+                    currentPathObjects.push({type: "game", object: item});
+                    currentLevel = item.categories || item.tracks;
+                }
+            } else {
+                item = currentLevel.find(c => c.id === segmentId);
+                if (item) {
+                    categoryPathForAudio.push(item.id);
+                    currentPathObjects.push({type: "category", object: item});
+                    currentLevel = item.categories || item.tracks;
+                }
             }
-            noTracksMessage.style.display = 'none';
 
-            const trackNames = mybrPlayer.getTrackNames();
-            mybrPlayer.tracks.forEach((track, index) => {
-                const trackItemDiv = document.createElement('div');
-                trackItemDiv.className = 'track-list-item';
-                
-                const trackNameSpan = document.createElement('span');
-                trackNameSpan.className = 'track-name';
-                trackNameSpan.textContent = trackNames[index];
-                
-                const volumeControlDiv = document.createElement('div');
-                volumeControlDiv.className = 'track-volume-control';
-                
-                const volumeLabel = document.createElement('span');
-                volumeLabel.textContent = 'Vol:';
-                
-                const trackVolumeSlider = document.createElement('input');
-                trackVolumeSlider.type = 'range';
-                trackVolumeSlider.min = '0';
-                trackVolumeSlider.max = '1';
-                trackVolumeSlider.step = '0.01';
-                trackVolumeSlider.value = mybrPlayer.getTrackVolume(index);
-                trackVolumeSlider.id = `trackVolumeSlider-${index}`;
-                trackVolumeSlider.disabled = !mybrPlayer.tracks.length;
-                trackVolumeSlider.style.width = '80px';
-                trackVolumeSlider.style.marginTop = '0';
+            if (!item) {
+                console.error("Item not found in path:", segmentId, "at level:", currentLevel);
+                return { item: null, currentContent: null, pathObjects: [], gameId: null, categoryPath: [] };
+            }
+            foundItem = item;
+        }
+        return { item: foundItem, currentContent: currentLevel, pathObjects: currentPathObjects, gameId: gameIdForAudio, categoryPath: categoryPathForAudio };
+      }
 
-                const trackVolumeValueSpan = document.createElement('span');
-                trackVolumeValueSpan.textContent = `${Math.round(mybrPlayer.getTrackVolume(index) * 100)}%`;
-                trackVolumeValueSpan.style.minWidth = '40px';
-
-                trackVolumeSlider.addEventListener('input', (event) => {
-                    const newVolume = parseFloat(event.target.value);
-                    mybrPlayer.setTrackVolume(index, newVolume);
-                    trackVolumeValueSpan.textContent = `${Math.round(newVolume * 100)}%`;
-                });
-
-                volumeControlDiv.appendChild(volumeLabel);
-                volumeControlDiv.appendChild(trackVolumeSlider);
-                volumeControlDiv.appendChild(trackVolumeValueSpan);
-
-                trackItemDiv.appendChild(trackNameSpan);
-                trackItemDiv.appendChild(volumeControlDiv);
-                trackControlsContainer.appendChild(trackItemDiv);
-            });
+      function renderContent(contentItems, gameId, categoryPath = []) {
+        dynamicContent.innerHTML = "";
+        if (!contentItems || contentItems.length === 0) {
+          dynamicContent.innerHTML =
+            '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No items available.</p>';
+          return;
         }
 
+        contentItems.forEach((item) => {
+          const cardType = (item.categories || item.tracks) ? "category" : "track";
+          const card = createContentCard(
+            item,
+            cardType,
+            gameId,
+            categoryPath,
+            currentSelectedGame ? currentSelectedGame.title : null
+          );
 
-        mybrPlayer.setStatusCallback((status, loopState) => {
-            updateUI(status, loopState);
-            const loopStatus = mybrPlayer.getLoopStatus();
-            // This reflects the loop status directly read from the .mybr file header
-            loopEnabledText.textContent = loopStatus.enabled ? 'Sì' : 'No';
-            loopStartText.textContent = loopStatus.start;
-            loopEndText.textContent = loopStatus.end;
-            
-            if (status === 'Pronto') {
-                // When a new file is loaded and ready, reset track volumes to initial state
-                mybrPlayer.tracks.forEach((track, idx) => {
-                    mybrPlayer.setTrackVolume(idx, idx === 0 ? 1.0 : 0.0);
-                });
-                // Also, update the player's internal loop state to match what's in the file
-                // This ensures the toggleLoopBtn text reflects the file's setting initially
-                mybrPlayer.loop = loopStatus.enabled; 
-                updateTrackVolumeControls();
+          if (cardType === "category") {
+            card.addEventListener("click", () => {
+              clearSelection();
+              card.classList.add("selected");
+              const currentUrlPath = window.location.search.replace('?path=', '').split('/').filter(Boolean);
+              const newPath = [...currentUrlPath, item.id];
+              navigateTo(newPath);
+            });
+          } else if (cardType === "track") {
+            card.dataset.trackId = item.id;
+            card.dataset.mybrFile = generateAudioPath(item, gameId, categoryPath);
+            card.addEventListener("click", () =>
+              selectTrack(item, currentSelectedGame.title, card)
+            );
+          }
+          dynamicContent.appendChild(card);
+        });
+      }
+
+      async function selectTrack(track, gameTitle, trackCardElement) {
+        mybrPlayer.stop();
+        document
+          .querySelectorAll(".content-card.selected")
+          .forEach((el) => el.classList.remove("selected"));
+        trackCardElement.classList.add("selected");
+        currentSelectedTrack = track;
+        playingTrackTitle.querySelector('span').textContent = track.title;
+        playingGameTitle.querySelector('span').textContent = gameTitle || "Unknown Game";
+        currentTrackCover.src = trackCardElement.querySelector("img").src;
+        
+        try {
+          mybrPlayer.src = trackCardElement.dataset.mybrFile;
+          await mybrPlayer._loadingPromise;
+          
+          updateUI(mybrPlayer.loop); 
+          await mybrPlayer.play();
+          checkTextOverflow(playingTrackTitle);
+          checkTextOverflow(playingGameTitle);
+        } catch (e) {
+          console.error("Error loading or playing selected track:", e);
+        }
+      }
+
+      function updateBreadcrumbs(pathSegments) {
+        let breadcrumbsHtml = `<span class="breadcrumb-item" data-path='[]'><i class="fas fa-home"></i></span>`;
+        let currentBreadcrumbSegments = [];
+
+        pathSegments.forEach((segmentId, index) => {
+            currentBreadcrumbSegments.push(segmentId);
+            const { pathObjects } = findItemInStructure(currentBreadcrumbSegments);
+
+            if (pathObjects.length > 0) {
+                const currentItem = pathObjects[pathObjects.length - 1].object;
+                if (currentItem) {
+                    breadcrumbsHtml += ` &gt; <span class="breadcrumb-item" data-path='${JSON.stringify(currentBreadcrumbSegments)}'>${currentItem.title || currentItem.name}</span>`;
+                }
             }
         });
+        breadcrumbs.innerHTML = breadcrumbsHtml;
 
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const originalFileName = file.name.replace(/\.mybr$/i, ''); 
-                mybrPlayer._src = originalFileName;
-                const fileUrl = URL.createObjectURL(file);
-                mybrPlayer.src = fileUrl;
-            }
+        breadcrumbs.querySelectorAll('.breadcrumb-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const targetPath = JSON.parse(item.dataset.path);
+                navigateTo(targetPath);
+            });
         });
+      }
 
-        playBtn.addEventListener('click', async () => {
-            try {
-                await mybrPlayer.play();
-            } catch (e) {
-                console.error('Errore durante la riproduzione:', e);
-                statusText.textContent = `Errore riproduzione: ${e.message}`;
-            }
-        });
+      function navigateTo(pathSegments) {
+        const pathString = pathSegments.join('/');
+        const newUrl = pathString ? `?path=${pathString}` : window.location.pathname;
 
-        pauseBtn.addEventListener('click', () => mybrPlayer.pause());
-        stopBtn.addEventListener('click', () => mybrPlayer.stop());
+        history.pushState({ path: pathSegments }, "", newUrl);
+        renderState(pathSegments);
+        updateUI(mybrPlayer.loop);
+      }
 
-        // Toggle the *player's current loop state*, which might differ from the file's initial state
-        toggleLoopBtn.addEventListener('click', () => {
-            mybrPlayer.loop = !mybrPlayer.loop;
-            // The setStatusCallback will be triggered by the loop setter, updating the UI
-        });
+      function renderState(pathSegments) {
+        currentSelectedGame = null;
 
-        volumeSlider.addEventListener('input', (event) => {
-            mybrPlayer.volume = parseFloat(event.target.value);
-            volumeValue.textContent = `${Math.round(mybrPlayer.volume * 100)}%`;
-        });
+        if (pathSegments.length === 0) {
+            updateBreadcrumbs([]);
+            displayGamesAsCards(currentData.games);
+            return;
+        }
 
-        mybrPlayer.addEventListener('play', () => console.log('Player: evento play'));
-        mybrPlayer.addEventListener('pause', () => console.log('Player: evento pause'));
-        mybrPlayer.addEventListener('ended', () => console.log('Player: evento ended'));
-        mybrPlayer.addEventListener('loadstart', () => console.log('Player: evento loadstart - Inizio caricamento'));
-        mybrPlayer.addEventListener('canplaythrough', () => console.log('Player: evento canplaythrough - Pronto per la riproduzione senza interruzioni'));
-        mybrPlayer.addEventListener('error', () => console.log('Player: evento error - Si è verificato un errore'));
+        const { item: lastItem, currentContent, gameId, categoryPath } = findItemInStructure(pathSegments);
 
-        updateUI('In attesa del file...', mybrPlayer.loop);
-        volumeValue.textContent = `${Math.round(mybrPlayer.volume * 100)}%`;
-        updateTrackVolumeControls();
+        if (!lastItem || !gameId) {
+            console.error("Invalid path or game not found in path:", pathSegments);
+            updateBreadcrumbs([]);
+            displayGamesAsCards(currentData.games);
+            return;
+        }
+
+        updateBreadcrumbs(pathSegments);
+
+        if (lastItem.tracks && lastItem.tracks.length > 0) {
+            renderContent(lastItem.tracks, gameId, categoryPath);
+        } else if (lastItem.categories && lastItem.categories.length > 0) {
+            renderContent(lastItem.categories, gameId, categoryPath);
+        } else if (lastItem.tracks && lastItem.tracks.length === 0) {
+            dynamicContent.innerHTML = '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No tracks available in this category.</p>';
+        }
+        else if (lastItem.categories && lastItem.categories.length === 0) {
+            dynamicContent.innerHTML = '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No subcategories available here.</p>';
+        }
+        else {
+            console.error("No content (tracks or categories) found at the end of the path:", lastItem);
+            dynamicContent.innerHTML = '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No content available here.</p>';
+        }
+      }
+
+      function checkUrlAndNavigate() {
+          const params = new URLSearchParams(window.location.search);
+          const pathParam = params.get("path");
+
+          if (pathParam) {
+              const pathSegments = pathParam.split('/').filter(Boolean);
+              renderState(pathSegments);
+          } else {
+              navigateTo([]);
+          }
+      }
+
+      window.addEventListener("popstate", (event) => {
+        if (event.state && event.state.path) {
+          renderState(event.state.path);
+        } else {
+          checkUrlAndNavigate();
+        }
+        updateUI(mybrPlayer.loop);
+      });
+
+      const resizeObserver = new ResizeObserver(entries => {
+          for (let entry of entries) {
+              if (entry.target.id === 'currentTrackDisplay') {
+                  checkTextOverflow(playingTrackTitle);
+                  checkTextOverflow(playingGameTitle);
+              }
+          }
+      });
+      resizeObserver.observe(document.getElementById('currentTrackDisplay'));
+
+
+      updateUI(mybrPlayer.loop);
+      loadSoundtrackData();
+      checkTextOverflow(playingTrackTitle);
+      checkTextOverflow(playingGameTitle);
     </script>
-</body>
+  </body>
 </html>

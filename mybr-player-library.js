@@ -4,6 +4,7 @@ class MybrPlayer extends EventTarget {
         this.audioContext = null;
         this._mainGainNode = null;
         this.tracks = [];
+        this.trackGainNodes = {};
         this._loopEnabled = false;
         this.loopStartSample = 0;
         this.loopEndSample = 0;
@@ -76,6 +77,15 @@ class MybrPlayer extends EventTarget {
         return this._src;
     }
 
+    // Nuova funzione per impostare tutte le tracce a 0
+    setAllTracksToZeroVolume() {
+        for (const trackName in this.trackGainNodes) {
+            if (this.trackGainNodes.hasOwnProperty(trackName)) {
+                this.setTrackVolume(trackName, 0);
+            }
+        }
+    }
+
     async _fetchAndParseAudio(url) {
         this.onStatusChange('Caricamento...', this._loopEnabled);
         try {
@@ -88,7 +98,7 @@ class MybrPlayer extends EventTarget {
 
             const magicNumber = dataView.getUint32(offset, true); offset += 4;
             const numTracks = dataView.getUint8(offset); offset += 1;
-            this._loopEnabled = dataView.getUint8(offset) === 1; offset += 1; 
+            this._loopEnabled = dataView.getUint8(offset) === 1; offset += 1;
             this.loopStartSample = dataView.getUint32(offset, true); offset += 4;
             this.loopEndSample = dataView.getUint32(offset, true); offset += 4;
 
@@ -100,6 +110,7 @@ class MybrPlayer extends EventTarget {
 
             if (!this.audioContext) this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.tracks = [];
+            this.trackGainNodes = {};
 
             const trackHeaders = [];
 
@@ -107,13 +118,11 @@ class MybrPlayer extends EventTarget {
                 const channels = dataView.getUint8(offset); offset += 1;
                 const sampleRate = dataView.getUint32(offset, true); offset += 4;
                 const numSamples = dataView.getUint32(offset, true); offset += 4;
-                
-                // --- NUOVA PARTE PER IL NOME DELLA TRACCIA (lettura) ---
-                const nameLength = dataView.getUint8(offset); offset += 1; // Lunghezza del nome (1 byte)
+
+                const nameLength = dataView.getUint8(offset); offset += 1;
                 const nameBytes = new Uint8Array(arrayBuffer, offset, nameLength);
-                const trackName = new TextDecoder().decode(nameBytes); // Decodifica la stringa
+                const trackName = new TextDecoder().decode(nameBytes);
                 offset += nameLength;
-                // --- FINE NUOVA PARTE ---
 
                 const offsetToData = dataView.getUint32(offset, true); offset += 4;
 
@@ -122,7 +131,7 @@ class MybrPlayer extends EventTarget {
 
             const decodePromises = trackHeaders.map(async (header, index) => {
                 const wavBuffer = arrayBuffer.slice(header.offsetToData);
-                
+
                 if (wavBuffer.byteLength === 0) {
                     console.warn(`Traccia ${index}: Nessun dato audio presente.`);
                     return null;
@@ -130,12 +139,15 @@ class MybrPlayer extends EventTarget {
 
                 try {
                     const audioBuffer = await this.audioContext.decodeAudioData(wavBuffer);
-                    return { 
-                        audioBuffer, 
-                        currentVolume: (index === 0) ? 1.0 : 0.0, 
-                        name: header.trackName || `Traccia ${index + 1}`, // Usa il nome letto o un fallback
-                        path: url + `#track${index}` 
-                    }; 
+                    const gainNode = this.audioContext.createGain();
+
+                    return {
+                        audioBuffer,
+                        currentVolume: 1.0,
+                        name: header.trackName || `Traccia ${index + 1}`,
+                        path: url + `#track${index}`,
+                        gainNode
+                    };
                 } catch (e) {
                     console.error(`Errore durante la decodifica della traccia ${index}:`, e);
                     return null;
@@ -149,11 +161,21 @@ class MybrPlayer extends EventTarget {
                 throw new Error("Nessuna traccia audio valida è stata caricata.");
             }
 
+            this.tracks.forEach(track => {
+                this.trackGainNodes[track.name] = track.gainNode;
+            });
+
+            // Chiama la nuova funzione per impostare tutte le tracce a 0
+            this.setAllTracksToZeroVolume();
+            // Imposta solo "main" a 1
+            this.setTrackVolume('main', 1);
+
             this.onStatusChange('Pronto', this._loopEnabled);
             return { loopEnabled: this._loopEnabled, loopStartSample: this.loopStartSample, loopEndSample: this.loopEndSample };
 
         } catch (e) {
             this.tracks = [];
+            this.trackGainNodes = {};
             this.onStatusChange(`Errore durante il caricamento/decodifica: ${e.message}`, this._loopEnabled);
             throw e;
         }
@@ -228,26 +250,25 @@ class MybrPlayer extends EventTarget {
             }
             track.sourceNode = this.audioContext.createBufferSource();
             track.sourceNode.buffer = track.audioBuffer;
-            
+
             track.sourceNode.loop = this._loopEnabled;
             track.sourceNode.loopStart = this.loopStartSample / track.audioBuffer.sampleRate;
             track.sourceNode.loopEnd = this.loopEndSample / track.audioBuffer.sampleRate;
-            
+
             if (!track.gainNode) {
                 track.gainNode = this.audioContext.createGain();
+                this.trackGainNodes[track.name] = track.gainNode;
             }
-            
-            track.gainNode.gain.value = track.currentVolume;
-            
-            track.sourceNode.connect(track.gainNode);
+
             track.gainNode.connect(this._mainGainNode);
+            track.sourceNode.connect(track.gainNode);
 
             track.sourceNode.start(0, this._pausedTime);
 
             track.sourceNode.onended = () => {
                 if (!this._loopEnabled && this._isPlaying) {
-                    const allTracksEnded = this.tracks.every(t => 
-                        !t.sourceNode || 
+                    const allTracksEnded = this.tracks.every(t =>
+                        !t.sourceNode ||
                         t.sourceNode.playbackState === AudioBufferSourceNode.ENDED_STATE ||
                         t.sourceNode.buffer === null
                     );
@@ -270,25 +291,22 @@ class MybrPlayer extends EventTarget {
         this.onStatusChange = callback;
     }
 
-    setTrackVolume(trackIndex, volume) {
-        if (trackIndex >= 0 && trackIndex < this.tracks.length) {
-            this.tracks[trackIndex].currentVolume = Math.max(0, Math.min(1, volume));
-            if (this.tracks[trackIndex].gainNode) {
-                this.tracks[trackIndex].gainNode.gain.value = this.tracks[trackIndex].currentVolume;
-            }
+    setTrackVolume(trackName, volume) {
+        if (this.trackGainNodes[trackName]) {
+            const desiredVolume = Math.max(0, Math.min(1, volume));
+            this.trackGainNodes[trackName].gain.value = desiredVolume;
+            const track = this.tracks.find(t => t.name === trackName);
+            if (track) track.currentVolume = desiredVolume;
         }
     }
 
-    getTrackVolume(trackIndex) {
-        if (trackIndex >= 0 && trackIndex < this.tracks.length) {
-            return this.tracks[trackIndex].currentVolume;
-        }
-        return 0;
+    getTrackVolume(trackName) {
+        const track = this.tracks.find(t => t.name === trackName);
+        return track ? track.currentVolume : 0;
     }
 
     getTrackNames() {
-        // Ora usa direttamente la proprietà 'name' letta dal file
-        return this.tracks.map((track, index) => track.name || `Traccia ${index + 1}`);
+        return this.tracks.map((track) => track.name);
     }
 }
 

@@ -1,0 +1,54 @@
+{
+  "games": [
+    {
+      "id": "mario-kart-8-deluxe",
+      "title": "Mario Kart 8 Deluxe",
+      "categories": [
+        {
+          "id": "courses",
+          "name": "Courses",
+          "categories": [
+            {
+              "id": "star-cup",
+              "name": "Star Cup",
+              "tracks": [
+                {
+                  "id": "electrodrome",
+                  "title": "Electrodrome"
+                }
+              ]
+            },
+            {
+              "id": "mushroom-cup",
+              "name": "Mushroom Cup",
+              "tracks": [
+                {
+                  "id": "water-park",
+                  "title": "Water Park",
+                  "flags": ["water"]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "super-mario-odyssey",
+      "title": "Super Mario Odyssey",
+      "categories": [
+        {
+          "id": "kingdoms",
+          "name": "Kingdoms",
+          "tracks": [
+            {
+              "id": "cascade-fossil-falls",
+              "title": "Fossil Falls (Cascade Kingdom)",
+              "flags": ["8bit"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
