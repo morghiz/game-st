@@ -9,6 +9,11 @@ body {
   flex-direction: column;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .main-content {
@@ -350,6 +355,21 @@ button .fas {
   .content-grid {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
+
+.player-controls button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.2s, transform 0.1s;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
 }
 
 .breadcrumb-item:hover {
