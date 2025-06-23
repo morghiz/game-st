@@ -61,7 +61,8 @@ class MYBRFileCreator(QThread):
     def __init__(self, tracks: List[AudioTrack], output_path: str, 
                  loop_enabled: bool, loop_mode: str, 
                  loop_start_manual: int, loop_end_manual: int,
-                 loop_start_file_path: Optional[str], loop_end_file_path: Optional[str]):
+                 loop_start_file_path: Optional[str], loop_end_file_path: Optional[str],
+                 loop_end_summative_mode: bool):
         super().__init__()
         self.tracks = tracks
         self.output_path = output_path
@@ -71,6 +72,7 @@ class MYBRFileCreator(QThread):
         self.loop_end_manual = loop_end_manual
         self.loop_start_file_path = loop_start_file_path
         self.loop_end_file_path = loop_end_file_path
+        self.loop_end_summative_mode = loop_end_summative_mode
         self.magic_number = 0x5242594D # 'MYBR'
 
     def run(self):
@@ -92,14 +94,17 @@ class MYBRFileCreator(QThread):
                     if not self.loop_start_file_path or not self.loop_end_file_path:
                         raise ValueError("Selezionare i file per Loop Start e Loop End in modalità file.")
                     
-                    start_track = AudioTrack(self.loop_start_file_path)
-                    end_track = AudioTrack(self.loop_end_file_path)
+                    start_track_ref = AudioTrack(self.loop_start_file_path)
+                    end_track_ref = AudioTrack(self.loop_end_file_path)
 
-                    if not start_track.valid or not end_track.valid:
+                    if not start_track_ref.valid or not end_track_ref.valid:
                         raise ValueError("I file di riferimento per il loop non sono WAV validi.")
                     
-                    loop_start_sample = start_track.num_samples
-                    loop_end_sample = end_track.num_samples
+                    loop_start_sample = start_track_ref.num_samples
+                    if self.loop_end_summative_mode:
+                        loop_end_sample = start_track_ref.num_samples + end_track_ref.num_samples
+                    else:
+                        loop_end_sample = end_track_ref.num_samples
 
                 if loop_start_sample >= loop_end_sample:
                     raise ValueError("Loop Start deve essere minore di Loop End.")
@@ -285,6 +290,11 @@ class MYBRCreatorMainWindow(QMainWindow):
         loop_end_file_layout.addWidget(self.loop_end_file_edit)
         loop_end_file_layout.addWidget(self.browse_loop_end_file_btn)
         file_loop_layout.addLayout(loop_end_file_layout)
+
+        self.loop_end_summative_cb = QCheckBox("Loop End: Sommativa (File End indica durata loop)")
+        self.loop_end_summative_cb.setToolTip("Se selezionato, Loop End = Loop Start File Samples + Loop End File Samples. Altrimenti, Loop End = Loop End File Samples.")
+        file_loop_layout.addWidget(self.loop_end_summative_cb)
+
         loop_layout.addWidget(self.file_loop_frame)
         
         self.toggle_loop_inputs() # Imposta lo stato iniziale
@@ -499,6 +509,7 @@ class MYBRCreatorMainWindow(QMainWindow):
         enabled = self.loop_enabled_cb.isChecked()
         self.loop_mode_manual_cb.setEnabled(enabled)
         self.loop_mode_file_cb.setEnabled(enabled)
+        self.loop_end_summative_cb.setEnabled(enabled and self.loop_mode_file_cb.isChecked())
         
         # Riapplica la logica di visibilità delle cornici in base alla modalità selezionata
         self.toggle_loop_mode()
@@ -510,6 +521,8 @@ class MYBRCreatorMainWindow(QMainWindow):
 
         self.manual_loop_frame.setVisible(manual_mode_enabled)
         self.file_loop_frame.setVisible(file_mode_enabled)
+        self.loop_end_summative_cb.setEnabled(file_mode_enabled)
+
 
         # Sincronizza le checkbox di modalità
         if self.sender() == self.loop_mode_manual_cb and self.loop_mode_manual_cb.isChecked():
@@ -561,6 +574,7 @@ class MYBRCreatorMainWindow(QMainWindow):
         loop_end_manual = self.loop_end_spin.value()
         loop_start_file_path = self.loop_start_file_edit.text()
         loop_end_file_path = self.loop_end_file_edit.text()
+        loop_end_summative_mode = self.loop_end_summative_cb.isChecked()
 
         # Validazione dei valori di loop prima di passare al thread (parziale, la completa è nel thread)
         if loop_enabled:
@@ -590,7 +604,8 @@ class MYBRCreatorMainWindow(QMainWindow):
             loop_start_manual,
             loop_end_manual,
             loop_start_file_path,
-            loop_end_file_path
+            loop_end_file_path,
+            loop_end_summative_mode
         )
         
         self.creator_thread.progress_updated.connect(self.on_progress_updated)

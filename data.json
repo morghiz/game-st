@@ -45,6 +45,16 @@
               "id": "cascade-fossil-falls",
               "title": "Fossil Falls (Cascade Kingdom)",
               "flags": ["8bit"]
+            },
+            {
+              "id": "wooded-steam-gardens",
+              "title": "Steam Gardens (Wooded Kingdom)",
+              "flags": ["8bit"]
+            },
+            {
+              "id": "lake-lamode",
+              "title": "Lake Lamode (Lake Kingdom)",
+              "flags": ["8bit", "water"]
             }
           ]
         }
