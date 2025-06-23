@@ -15,7 +15,7 @@ class MybrPlayer extends EventTarget {
         this._src = '';
         this._loadingPromise = null;
         this.onStatusChange = () => {};
-        this._endedTrackCount = 0; // Contatore per le tracce terminate
+        this._endedTrackCount = 0;
     }
 
     set volume(value) {
@@ -30,15 +30,14 @@ class MybrPlayer extends EventTarget {
     set loop(value) {
         this._loopEnabled = !!value;
         this.tracks.forEach(track => {
-            if (track.sourceNode) {
+            if (track.sourceNode && track.audioBuffer) {
                 track.sourceNode.loop = this._loopEnabled;
-                // Imposta loopStart e loopEnd anche qui se il loop viene abilitato/disabilitato a runtime
                 if (this._loopEnabled && this.loopEndSample > this.loopStartSample) {
                     track.sourceNode.loopStart = this.loopStartSample / track.audioBuffer.sampleRate;
                     track.sourceNode.loopEnd = this.loopEndSample / track.audioBuffer.sampleRate;
                 } else {
                     track.sourceNode.loopStart = 0;
-                    track.sourceNode.loopEnd = 0;
+                    track.sourceNode.loopEnd = track.audioBuffer.duration;
                 }
             }
         });
@@ -54,18 +53,19 @@ class MybrPlayer extends EventTarget {
     }
 
     get currentTime() {
-        if (!this.audioContext || this.tracks.length === 0 || !this.tracks[0].audioBuffer) return this._pausedTime;
-        if (!this._isPlaying) return this._pausedTime;
-        // Tempo lineare assoluto dell'AudioContext. Il loop visivo/acustico è gestito dalla sourceNode stessa.
-        return this._pausedTime + (this.audioContext.currentTime - this._playbackStartTime);
+        if (!this.audioContext) return 0;
+        if (this._isPlaying) {
+            return this._pausedTime + (this.audioContext.currentTime - this._playbackStartTime);
+        }
+        return this._pausedTime;
     }
 
     set src(url) {
         if (this._src === url) return;
         this._src = url;
         this.stop();
-        this._loadingPromise = this._fetchAndParseAudio(url);
         this.dispatchEvent(new Event('loadstart'));
+        this._loadingPromise = this._fetchAndParseAudio(url);
         this._loadingPromise.then(() => {
             this.dispatchEvent(new Event('canplaythrough'));
         }).catch(e => {
@@ -77,32 +77,49 @@ class MybrPlayer extends EventTarget {
     get src() {
         return this._src;
     }
-
-    setAllTracksToZeroVolume() {
-        for (const trackName in this.trackGainNodes) {
-            if (this.trackGainNodes.hasOwnProperty(trackName)) {
-                this.setTrackVolume(trackName, 0);
-            }
-        }
-    }
-
+    
     async _fetchAndParseAudio(url) {
         this.onStatusChange('Caricamento...', this._loopEnabled);
         try {
             const response = await fetch(url);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            const arrayBuffer = await response.arrayBuffer();
+            
+            const contentLength = +response.headers.get('Content-Length');
+            let receivedLength = 0;
+            const chunks = [];
+            
+            const reader = response.body.getReader();
+
+            while(true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                receivedLength += value.length;
+                if (contentLength) {
+                    const progress = (receivedLength / contentLength) * 100;
+                    this.dispatchEvent(new CustomEvent('loadprogress', { detail: { progress } }));
+                }
+            }
+
+            let chunksAll = new Uint8Array(receivedLength);
+            let position = 0;
+            for(let chunk of chunks) {
+                chunksAll.set(chunk, position);
+                position += chunk.length;
+            }
+            
+            const arrayBuffer = chunksAll.buffer;
 
             const dataView = new DataView(arrayBuffer);
             let offset = 0;
 
             const magicNumber = dataView.getUint32(offset, true); offset += 4;
             const numTracks = dataView.getUint8(offset); offset += 1;
-            this._loopEnabled = dataView.getUint8(offset) === 1; offset += 1; // Legge lo stato del loop dal file
+            this._loopEnabled = dataView.getUint8(offset) === 1; offset += 1;
             this.loopStartSample = dataView.getUint32(offset, true); offset += 4;
             this.loopEndSample = dataView.getUint32(offset, true); offset += 4;
 
-            const EXPECTED_MAGIC_NUMBER = 0x5242594D; // 'MYBR'
+            const EXPECTED_MAGIC_NUMBER = 0x5242594D;
             if (magicNumber !== EXPECTED_MAGIC_NUMBER) {
                 this.onStatusChange(`Errore: Numero Magico non valido. Trovato: 0x${magicNumber.toString(16)}. Atteso: 0x${EXPECTED_MAGIC_NUMBER.toString(16)}.`, this._loopEnabled);
                 throw new Error('Numero Magico non valido');
@@ -131,23 +148,11 @@ class MybrPlayer extends EventTarget {
 
             const decodePromises = trackHeaders.map(async (header, index) => {
                 const wavBuffer = arrayBuffer.slice(header.offsetToData);
-
-                if (wavBuffer.byteLength === 0) {
-                    console.warn(`Traccia ${index}: Nessun dato audio presente.`);
-                    return null;
-                }
-
+                if (wavBuffer.byteLength === 0) return null;
                 try {
                     const audioBuffer = await this.audioContext.decodeAudioData(wavBuffer);
                     const gainNode = this.audioContext.createGain();
-
-                    return {
-                        audioBuffer,
-                        currentVolume: 1.0, // Default volume, sarà sovrascritto dalla logica UI
-                        name: header.trackName || `Traccia ${index + 1}`,
-                        path: url + `#track${index}`,
-                        gainNode
-                    };
+                    return { audioBuffer, currentVolume: 1.0, name: header.trackName || `Traccia ${index + 1}`, path: url + `#track${index}`, gainNode };
                 } catch (e) {
                     console.error(`Errore durante la decodifica della traccia ${index}:`, e);
                     return null;
@@ -157,21 +162,11 @@ class MybrPlayer extends EventTarget {
             const decodedTracks = await Promise.all(decodePromises);
             this.tracks = decodedTracks.filter(track => track !== null);
 
-            if (this.tracks.length === 0) {
-                throw new Error("Nessuna traccia audio valida è stata caricata.");
-            }
+            if (this.tracks.length === 0) throw new Error("Nessuna traccia audio valida è stata caricata.");
 
-            this.tracks.forEach(track => {
-                this.trackGainNodes[track.name] = track.gainNode;
-            });
-
-            // NOTA: Il reset dei volumi iniziale è ora gestito in index.html in selectTrack
-            // mybrPlayer.setTrackVolume('main', 1);
-            // FLAGS_CONFIG.forEach(flag => mybrPlayer.setTrackVolume(flag.id, 0));
-
+            this.tracks.forEach(track => { this.trackGainNodes[track.name] = track.gainNode; });
             this.onStatusChange('Pronto', this._loopEnabled);
             return { loopEnabled: this._loopEnabled, loopStartSample: this.loopStartSample, loopEndSample: this.loopEndSample };
-
         } catch (e) {
             this.tracks = [];
             this.trackGainNodes = {};
@@ -206,16 +201,20 @@ class MybrPlayer extends EventTarget {
 
     pause() {
         if (!this._isPlaying) return;
-        this._pausedTime = this.currentTime;
+        
+        const elapsed = this.audioContext.currentTime - this._playbackStartTime;
+        this._pausedTime += elapsed;
+
         this.tracks.forEach(track => {
             if (track.sourceNode) {
+                track.sourceNode.onended = null;
                 track.sourceNode.stop();
                 track.sourceNode.disconnect();
                 track.sourceNode = null;
             }
         });
         this._isPlaying = false;
-        this._endedTrackCount = 0; // Reset contatore quando in pausa
+        this._endedTrackCount = 0;
         this.onStatusChange('In pausa', this._loopEnabled);
         this.dispatchEvent(new Event('pause'));
     }
@@ -224,6 +223,7 @@ class MybrPlayer extends EventTarget {
         const wasPlaying = this._isPlaying;
         this.tracks.forEach(track => {
             if (track.sourceNode) {
+                track.sourceNode.onended = null;
                 track.sourceNode.stop();
                 track.sourceNode.disconnect();
                 track.sourceNode = null;
@@ -232,7 +232,7 @@ class MybrPlayer extends EventTarget {
         this._isPlaying = false;
         this._pausedTime = 0;
         this._playbackStartTime = 0;
-        this._endedTrackCount = 0; // Reset contatore quando stoppato
+        this._endedTrackCount = 0;
         this.onStatusChange('Fermo', this._loopEnabled);
         if (wasPlaying) this.dispatchEvent(new Event('ended'));
     }
@@ -244,7 +244,22 @@ class MybrPlayer extends EventTarget {
             this._mainGainNode.connect(this.audioContext.destination);
         }
 
-        this._endedTrackCount = 0; // Reset contatore prima di iniziare la riproduzione
+        this._playbackStartTime = this.audioContext.currentTime;
+        this._endedTrackCount = 0;
+
+        const startOffset = this._pausedTime;
+        let effectiveStartOffset = startOffset;
+        
+        if (this._loopEnabled && this.tracks.length > 0 && this.loopEndSample > this.loopStartSample) {
+            const sampleRate = this.tracks[0].audioBuffer.sampleRate;
+            const loopStartSec = this.loopStartSample / sampleRate;
+            const loopEndSec = this.loopEndSample / sampleRate;
+            const loopDuration = loopEndSec - loopStartSec;
+
+            if (startOffset >= loopStartSec && loopDuration > 0) {
+                effectiveStartOffset = loopStartSec + ((startOffset - loopStartSec) % loopDuration);
+            }
+        }
 
         this.tracks.forEach((track) => {
             if (track.sourceNode) {
@@ -253,18 +268,11 @@ class MybrPlayer extends EventTarget {
             }
             track.sourceNode = this.audioContext.createBufferSource();
             track.sourceNode.buffer = track.audioBuffer;
-
             track.sourceNode.loop = this._loopEnabled;
-            // Imposta loopStart e loopEnd solo se il loop è abilitato e i valori sono validi
-            // Il check loopEndSample > loopStartSample è per evitare loop di durata zero o negativi
+
             if (this._loopEnabled && this.loopEndSample > this.loopStartSample) {
                 track.sourceNode.loopStart = this.loopStartSample / track.audioBuffer.sampleRate;
                 track.sourceNode.loopEnd = this.loopEndSample / track.audioBuffer.sampleRate;
-            } else {
-                // Se il loop non è abilitato o i valori sono invalidi, imposta i valori di default
-                track.sourceNode.loopStart = 0;
-                // Imposta loopEnd alla durata totale del buffer se non in loop, per garantire che onended venga chiamato alla fine
-                track.sourceNode.loopEnd = track.audioBuffer.duration;
             }
 
             if (!track.gainNode) {
@@ -274,15 +282,11 @@ class MybrPlayer extends EventTarget {
 
             track.gainNode.connect(this._mainGainNode);
             track.sourceNode.connect(track.gainNode);
-
-            track.sourceNode.start(0, this._pausedTime);
+            track.sourceNode.start(0, effectiveStartOffset);
 
             track.sourceNode.onended = () => {
-                // L'evento onended viene chiamato anche se il nodo è in loop e il loop finisce.
-                // Lo gestiamo solo se il player non è impostato per il loop globale.
                 if (!this._loopEnabled && this._isPlaying) {
                     this._endedTrackCount++;
-                    // Se tutte le tracce sono terminate e il player è ancora in riproduzione (non in loop)
                     if (this._endedTrackCount >= this.tracks.length) {
                         this.stop();
                     }
@@ -290,10 +294,17 @@ class MybrPlayer extends EventTarget {
             };
         });
 
-        this._playbackStartTime = this.audioContext.currentTime - this._pausedTime;
         this._isPlaying = true;
     }
-
+    
+    setAllTracksToZeroVolume() {
+        for (const trackName in this.trackGainNodes) {
+            if (this.trackGainNodes.hasOwnProperty(trackName)) {
+                this.setTrackVolume(trackName, 0);
+            }
+        }
+    }
+    
     getLoopStatus() {
         return { enabled: this._loopEnabled, start: this.loopStartSample, end: this.loopEndSample };
     }

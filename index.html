@@ -26,6 +26,10 @@
         <div class="player-left">
           <div class="cover-container">
             <img id="currentTrackCover" src="https://placehold.co/150x150" alt="Album Cover" class="track-cover-small"/>
+            <div id="loader" class="loader-container hidden">
+              <div class="spinner"></div>
+              <span id="loadingProgress">0%</span>
+            </div>
             <button id="playPauseBtnOverlay" class="play-overlay" disabled title="Play/Pause">
               <i class="fas fa-play"></i>
             </button>
@@ -49,6 +53,9 @@
             <button id="toggleWaterBtn" class="hidden" disabled title="Toggle Water Mode">
               <i class="fas fa-water"></i>
             </button>
+            <button id="shareBtn" disabled title="Share Current Track">
+              <i class="fas fa-share-alt"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -65,9 +72,13 @@
       const playingTrackTitle = document.getElementById("playingTrackTitle");
       const playingGameTitle = document.getElementById("playingGameTitle");
       const currentTrackCover = document.getElementById("currentTrackCover");
+      const loader = document.getElementById("loader");
+      const loadingProgress = document.getElementById("loadingProgress");
+      const shareBtn = document.getElementById("shareBtn");
       let currentData = null;
       let currentSelectedGame = null;
       let currentSelectedTrack = null;
+      let currentTrackPathSegments = [];
       const AUDIO_BASE_PATH = "./audio/";
       const COVERS_BASE_PATH = "./covers/";
       const DEFAULT_COVER_PLACEHOLDER = "https://placehold.co/150x150";
@@ -101,13 +112,11 @@
         if (flag.element) {
           flag.element.addEventListener("click", () => {
             const wasActive = flag.isActive;
-            // Disattiva tutte le altre flag solo se questa non era già attiva
             FLAGS_CONFIG.forEach(f => f.isActive = false);
             if (!wasActive) {
               flag.isActive = true;
             }
             saveFlagsState();
-            // Applica immediatamente i volumi dopo il cambio di stato della flag
             applyTrackVolumes();
             updateUI(mybrPlayer.loop);
           });
@@ -115,8 +124,8 @@
       });
 
       function applyTrackVolumes() {
-        mybrPlayer.setTrackVolume('main', 1); // La traccia principale è sempre a 1 di default
-        FLAGS_CONFIG.forEach(flag => mybrPlayer.setTrackVolume(flag.id, 0)); // Tutte le tracce flag a 0
+        mybrPlayer.setTrackVolume('main', 1);
+        FLAGS_CONFIG.forEach(flag => mybrPlayer.setTrackVolume(flag.id, 0));
 
         let activeFlagId = null;
         if (currentSelectedTrack) {
@@ -139,6 +148,7 @@
         playPauseBtn.disabled = !hasTracks;
         playPauseBtnOverlay.disabled = !hasTracks;
         toggleLoopBtn.disabled = !hasTracks;
+        shareBtn.disabled = !currentSelectedTrack;
 
         FLAGS_CONFIG.forEach(flag => {
           const supportsFlag = currentSelectedTrack && currentSelectedTrack.flags && currentSelectedTrack.flags.includes(flag.id);
@@ -146,7 +156,7 @@
             if (supportsFlag) {
               flag.element.classList.remove("hidden");
               flag.element.disabled = !hasTracks;
-              flag.element.style.color = flag.isActive ? "#1DB954" : "#ffffff";
+              flag.element.style.color = flag.isActive ? "#1DB950" : "#ffffff";
             } else {
               flag.element.classList.add("hidden");
               flag.element.disabled = true;
@@ -160,7 +170,7 @@
         playPauseBtnOverlay.innerHTML = mybrPlayer._isPlaying
           ? '<i class="fas fa-pause"></i>'
           : '<i class="fas fa-play"></i>';
-        toggleLoopBtn.style.color = playerLoopState ? "#1DB954" : "#ffffff";
+        toggleLoopBtn.style.color = playerLoopState ? "#1DB950" : "#ffffff";
         
         if (!mybrPlayer._isPlaying && !currentSelectedTrack) {
           currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
@@ -198,21 +208,69 @@
       });
 
       mybrPlayer.addEventListener("ended", () => {
-        // L'evento 'ended' per il player MybrPlayer si verifica solo quando la riproduzione è *realmente* finita (non in loop)
         if (!mybrPlayer.loop) {
-            currentSelectedTrack = null; // Il brano corrente è terminato
-            updateUI(mybrPlayer.loop); // Aggiorna l'UI (nasconde/disabilita i pulsanti flag se non c'è traccia)
+            currentSelectedTrack = null;
+            currentTrackPathSegments = [];
+            updateUI(mybrPlayer.loop);
             playingTrackTitle.querySelector('span').textContent = "Not playing";
             playingGameTitle.querySelector('span').textContent = "Select a track";
             checkTextOverflow(playingTrackTitle);
             checkTextOverflow(playingGameTitle);
         }
       });
-      mybrPlayer.addEventListener("loadstart", () => {});
-      mybrPlayer.addEventListener("canplaythrough", () => {});
-      mybrPlayer.addEventListener("error", (e) => {
-        console.error("Player: error event - An error occurred", e);
+      mybrPlayer.addEventListener("loadstart", () => {
+          loader.classList.remove('hidden');
+          playPauseBtnOverlay.classList.add('hidden');
+          loadingProgress.textContent = '0%';
       });
+      mybrPlayer.addEventListener("loadprogress", (e) => {
+          loadingProgress.textContent = `${Math.round(e.detail.progress)}%`;
+      });
+      mybrPlayer.addEventListener("canplaythrough", () => {
+          loader.classList.add('hidden');
+          playPauseBtnOverlay.classList.remove('hidden');
+      });
+      mybrPlayer.addEventListener("error", (e) => {
+          loader.classList.add('hidden');
+          playPauseBtnOverlay.classList.remove('hidden');
+          console.error("Player: error event - An error occurred", e);
+      });
+
+      async function shareCurrentTrack() {
+        if (!currentSelectedTrack || !navigator.share) {
+          console.warn("No track selected or Web Share API not supported.");
+          return;
+        }
+        
+        const basePath = window.location.origin + window.location.pathname;
+        let shareUrl = basePath;
+
+        if (currentTrackPathSegments.length > 0) {
+            const trackId = currentTrackPathSegments[currentTrackPathSegments.length - 1];
+            const pathSegmentsWithoutTrack = currentTrackPathSegments.slice(0, -1);
+            
+            let queryParams = [];
+            if (pathSegmentsWithoutTrack.length > 0) {
+                queryParams.push(`path=${pathSegmentsWithoutTrack.join('/')}`);
+            }
+            queryParams.push(`trackid=${trackId}`);
+
+            shareUrl += `?${queryParams.join('&')}`;
+        }
+
+        try {
+          await navigator.share({
+            title: `Soundtrack: ${currentSelectedTrack.title}`,
+            text: `Ascolta "${currentSelectedTrack.title}" da ${currentSelectedGame.title}`,
+            url: shareUrl,
+          });
+          console.log("Track shared successfully!");
+        } catch (error) {
+          console.error("Error sharing track:", error);
+        }
+      }
+
+      shareBtn.addEventListener("click", shareCurrentTrack);
 
       function checkTextOverflow(parentElement) {
           const textSpan = parentElement.querySelector('span');
@@ -390,33 +448,42 @@
             });
           } else if (cardType === "track") {
             card.dataset.trackId = item.id;
-            card.dataset.mybrFile = generateAudioPath(item, gameId, categoryPath);
-            card.addEventListener("click", () =>
-              selectTrack(item, currentSelectedGame.title, card)
-            );
+            card.addEventListener("click", () => {
+              navigateTo([gameId, ...categoryPath], item.id);
+            });
           }
           dynamicContent.appendChild(card);
         });
       }
 
-      async function selectTrack(track, gameTitle, trackCardElement) {
+      async function selectTrack(track, gameTitle, pathSegments) {
         mybrPlayer.stop();
-        document
-          .querySelectorAll(".content-card.selected")
-          .forEach((el) => el.classList.remove("selected"));
-        trackCardElement.classList.add("selected");
+        document.querySelectorAll(".content-card.selected").forEach((el) => el.classList.remove("selected"));
+        
+        const currentlyRenderedTrackCard = dynamicContent.querySelector(`.content-card[data-track-id="${track.id}"]`);
+        if (currentlyRenderedTrackCard) {
+            currentlyRenderedTrackCard.classList.add("selected");
+            // Scroll to the selected track card
+            currentlyRenderedTrackCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            console.warn("Could not find current rendered track card for visual selection:", track.id);
+        }
+
         currentSelectedTrack = track;
+        currentTrackPathSegments = pathSegments;
         playingTrackTitle.querySelector('span').textContent = track.title;
         playingGameTitle.querySelector('span').textContent = gameTitle || "Unknown Game";
-        currentTrackCover.src = trackCardElement.querySelector("img").src;
         
+        const gameIdForCover = pathSegments[0];
+        const categoryPathForCover = pathSegments.slice(1, -1);
+        currentTrackCover.src = generateCoverPath(track, "track", gameIdForCover, categoryPathForCover);
+        currentTrackCover.onerror = () => currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+
+        mybrPlayer.src = generateAudioPath(track, pathSegments[0], pathSegments.slice(1, -1));
+
         try {
-          mybrPlayer.src = trackCardElement.dataset.mybrFile;
           await mybrPlayer._loadingPromise;
-          
-          // Dopo aver caricato un nuovo brano, resetta i volumi e applica le flag
           applyTrackVolumes(); 
-          
           updateUI(mybrPlayer.loop); 
           await mybrPlayer.play();
           checkTextOverflow(playingTrackTitle);
@@ -451,13 +518,25 @@
         });
       }
 
-      function navigateTo(pathSegments) {
-        const pathString = pathSegments.join('/');
-        const newUrl = pathString ? `?path=${pathString}` : window.location.pathname;
+      function navigateTo(displayPathSegments, trackIdToHighlight = null) {
+        let pathString = displayPathSegments.join('/');
+        let newUrl = window.location.pathname;
+        let queryParams = [];
 
-        history.pushState({ path: pathSegments }, "", newUrl);
-        renderState(pathSegments);
-        updateUI(mybrPlayer.loop);
+        if (pathString) {
+            queryParams.push(`path=${pathString}`);
+        }
+        if (trackIdToHighlight) {
+            queryParams.push(`trackid=${trackIdToHighlight}`);
+        }
+
+        if (queryParams.length > 0) {
+            newUrl += `?${queryParams.join('&')}`;
+        }
+        
+        history.pushState({ path: displayPathSegments, trackId: trackIdToHighlight }, "", newUrl);
+        
+        checkUrlAndNavigate(); // Explicitly call to process the new URL
       }
 
       function renderState(pathSegments) {
@@ -499,18 +578,57 @@
       function checkUrlAndNavigate() {
           const params = new URLSearchParams(window.location.search);
           const pathParam = params.get("path");
+          const trackidParam = params.get("trackid");
 
-          if (pathParam) {
-              const pathSegments = pathParam.split('/').filter(Boolean);
-              renderState(pathSegments);
+          let displayPathSegments = pathParam ? pathParam.split('/').filter(Boolean) : [];
+          
+          renderState(displayPathSegments);
+
+          if (trackidParam) {
+              const fullPathSegmentsForTrack = [...displayPathSegments, trackidParam];
+              const { item: selectedTrackObject, gameId } = findItemInStructure(fullPathSegmentsForTrack);
+              if (selectedTrackObject && gameId) {
+                  selectTrack(selectedTrackObject, findItemInStructure([gameId]).item.title, fullPathSegmentsForTrack);
+              } else {
+                console.warn("Track object or game not found for URL:", fullPathSegmentsForTrack.join('/'));
+              }
           } else {
-              navigateTo([]);
+              mybrPlayer.stop();
+              currentSelectedTrack = null;
+              currentTrackPathSegments = [];
+              playingTrackTitle.querySelector('span').textContent = "Not playing";
+              playingGameTitle.querySelector('span').textContent = "Select a track";
+              currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+              checkTextOverflow(playingTrackTitle);
+              checkTextOverflow(playingGameTitle);
           }
+          updateUI(mybrPlayer.loop);
       }
 
       window.addEventListener("popstate", (event) => {
-        if (event.state && event.state.path) {
-          renderState(event.state.path);
+        if (event.state) {
+            const displayPathSegments = event.state.path || [];
+            const trackIdToHighlight = event.state.trackId || null;
+            renderState(displayPathSegments);
+
+            if (trackIdToHighlight) {
+                const fullPathSegmentsForTrack = [...displayPathSegments, trackIdToHighlight];
+                const { item: selectedTrackObject, gameId } = findItemInStructure(fullPathSegmentsForTrack);
+                if (selectedTrackObject && gameId) {
+                    selectTrack(selectedTrackObject, findItemInStructure([gameId]).item.title, fullPathSegmentsForTrack);
+                } else {
+                  console.warn("Track object or game not found for popstate URL:", fullPathSegmentsForTrack.join('/'));
+                }
+            } else {
+                mybrPlayer.stop();
+                currentSelectedTrack = null;
+                currentTrackPathSegments = [];
+                playingTrackTitle.querySelector('span').textContent = "Not playing";
+                playingGameTitle.querySelector('span').textContent = "Select a track";
+                currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+                checkTextOverflow(playingTrackTitle);
+                checkTextOverflow(playingGameTitle);
+            }
         } else {
           checkUrlAndNavigate();
         }
@@ -526,7 +644,6 @@
           }
       });
       resizeObserver.observe(document.getElementById('currentTrackDisplay'));
-
 
       updateUI(mybrPlayer.loop);
       loadSoundtrackData();

@@ -48,7 +48,7 @@ body {
 
 .player-bar {
   background-color: #282828;
-  padding: 1rem 2rem;
+  padding: 1rem;
   display: flex;
   align-items: center;
   border-top: 1px solid #3a3a3a;
@@ -76,8 +76,8 @@ body {
 
 .cover-container {
   position: relative;
-  width: 50px;
-  height: 50px;
+  width: 80px;
+  height: 80px;
   flex-shrink: 0;
 }
 
@@ -269,6 +269,12 @@ button .fas {
   animation-play-state: running;
 }
 
+.content-card.highlighted {
+  box-shadow: 0 0 15px 5px #1DB954;
+  transform: scale(1.02);
+  transition: all 0.3s ease-in-out;
+}
+
 #playingGameTitle {
   font-size: 0.8rem;
   color: #b3b3b3;
@@ -302,7 +308,7 @@ button .fas {
   }
 
   .player-bar {
-    padding: 0.75rem 1.5rem;
+    padding: 0.6rem;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
@@ -314,6 +320,11 @@ button .fas {
     border-top: none;
     background-color: #282828;
     box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
+  }
+
+  .cover-container {
+    width: 60px;
+    height: 60px;
   }
 
   .player-left {
@@ -344,4 +355,45 @@ button .fas {
 .breadcrumb-item:hover {
     text-decoration: underline;
     cursor: pointer;
+}
+
+.loader-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  z-index: 10;
+  border-radius: 4px; /* Match cover radius */
+}
+
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top: 4px solid #fff;
+  width: 20px;
+  aspect-ratio: 1 !important;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+#loadingProgress {
+  margin-top: 10px;
+  font-size: 1em;
+  font-weight: bold;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.hidden {
+  display: none !important;
 }
