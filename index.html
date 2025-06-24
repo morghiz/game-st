@@ -105,7 +105,6 @@
       const AUDIO_BASE_PATH = "./audio/";
       const COVERS_BASE_PATH = "./covers/";
       const DEFAULT_COVER_PLACEHOLDER = "https://placehold.co/150x150";
-
       function getFlagStateFromLocalStorage(id) {
         const savedState = localStorage.getItem("flagsState");
         if (savedState) {
@@ -119,7 +118,6 @@
         }
         return false;
       }
-
       const FLAGS_CONFIG = [
         {
           id: "8bit",
@@ -134,7 +132,6 @@
           isActive: getFlagStateFromLocalStorage("water"),
         },
       ];
-
       function saveFlagsState() {
         const state = FLAGS_CONFIG.map((flag) => ({
           id: flag.id,
@@ -142,7 +139,6 @@
         }));
         localStorage.setItem("flagsState", JSON.stringify(state));
       }
-
       FLAGS_CONFIG.forEach((flag) => {
         flag.element = document.getElementById(flag.buttonId);
         if (flag.element) {
@@ -158,11 +154,9 @@
           });
         }
       });
-
       function applyTrackVolumes() {
         mybrPlayer.setTrackVolume("main", 1);
         FLAGS_CONFIG.forEach((flag) => mybrPlayer.setTrackVolume(flag.id, 0));
-
         let activeFlagId = null;
         if (currentSelectedTrack) {
           FLAGS_CONFIG.forEach((flag) => {
@@ -174,20 +168,17 @@
             }
           });
         }
-
         if (activeFlagId) {
           mybrPlayer.setTrackVolume("main", 0);
           mybrPlayer.setTrackVolume(activeFlagId, 1);
         }
       }
-
       function updateUI(playerLoopState) {
         const hasTracks = mybrPlayer.tracks.length > 0;
         playPauseBtn.disabled = !hasTracks;
         playPauseBtnOverlay.disabled = !hasTracks;
         toggleLoopBtn.disabled = !hasTracks;
         shareBtn.disabled = !currentSelectedTrack;
-
         FLAGS_CONFIG.forEach((flag) => {
           const supportsFlag =
             currentSelectedTrack &&
@@ -204,7 +195,6 @@
             }
           }
         });
-
         playPauseBtn.innerHTML = mybrPlayer._isPlaying
           ? '<i class="fas fa-pause"></i>'
           : '<i class="fas fa-play"></i>';
@@ -212,16 +202,13 @@
           ? '<i class="fas fa-pause"></i>'
           : '<i class="fas fa-play"></i>';
         toggleLoopBtn.style.color = playerLoopState ? "#1DB950" : "#ffffff";
-
         if (!mybrPlayer._isPlaying && !currentSelectedTrack) {
           currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
         }
       }
-
       mybrPlayer.setStatusCallback((status, playerLoopState) => {
         updateUI(playerLoopState);
       });
-
       const commonPlayPauseHandler = async () => {
         if (mybrPlayer._isPlaying) {
           mybrPlayer.pause();
@@ -235,19 +222,15 @@
       };
       playPauseBtn.addEventListener("click", commonPlayPauseHandler);
       playPauseBtnOverlay.addEventListener("click", commonPlayPauseHandler);
-
       toggleLoopBtn.addEventListener("click", () => {
         mybrPlayer.loop = !mybrPlayer.loop;
       });
-
       mybrPlayer.addEventListener("play", () => {
         updateUI(mybrPlayer.loop);
       });
-
       mybrPlayer.addEventListener("pause", () => {
         updateUI(mybrPlayer.loop);
       });
-
       mybrPlayer.addEventListener("ended", () => {
         if (!mybrPlayer.loop) {
           currentSelectedTrack = null;
@@ -278,17 +261,18 @@
         loader.classList.add("hidden");
         playPauseBtnOverlay.classList.remove("hidden");
         console.error("Player: error event - An error occurred", e);
+        playingTrackTitle.querySelector("span").textContent = "Error loading track";
+        playingGameTitle.querySelector("span").textContent = "Please try again";
+        checkTextOverflow(playingTrackTitle);
+        checkTextOverflow(playingGameTitle);
       });
-
       async function shareCurrentTrack() {
         if (!currentSelectedTrack || !navigator.share) {
           console.warn("No track selected or Web Share API not supported.");
           return;
         }
-
         const basePath = window.location.origin + window.location.pathname;
         let shareUrl = basePath;
-
         if (currentTrackPathSegments.length > 0) {
           const trackId =
             currentTrackPathSegments[currentTrackPathSegments.length - 1];
@@ -296,16 +280,13 @@
             0,
             -1
           );
-
           let queryParams = [];
           if (pathSegmentsWithoutTrack.length > 0) {
             queryParams.push(`path=${pathSegmentsWithoutTrack.join("/")}`);
           }
           queryParams.push(`trackid=${trackId}`);
-
           shareUrl += `?${queryParams.join("&")}`;
         }
-
         try {
           await navigator.share({
             title: `Soundtrack: ${currentSelectedTrack.title}`,
@@ -317,9 +298,7 @@
           console.error("Error sharing track:", error);
         }
       }
-
       shareBtn.addEventListener("click", shareCurrentTrack);
-
       function checkTextOverflow(parentElement) {
         const textSpan = parentElement.querySelector("span");
         if (textSpan) {
@@ -336,7 +315,6 @@
           }
         }
       }
-
       async function loadSoundtrackData() {
         try {
           const response = await fetch("data.json");
@@ -350,7 +328,6 @@
             '<p style="color:#ef4444;text-align:center;padding:2.5rem 0;">Error loading data.</p>';
         }
       }
-
       function generateCoverPath(item, type, gameId = null, categoryPath = []) {
         let pathSegments = [];
         if (gameId) {
@@ -364,7 +341,6 @@
         }
         return `${COVERS_BASE_PATH}${pathSegments.join("/")}/${item.id}.png`;
       }
-
       function generateAudioPath(track, gameId, categoryPath = []) {
         let pathSegments = [];
         pathSegments.push(gameId);
@@ -374,7 +350,6 @@
         pathSegments.push(track.id);
         return `${AUDIO_BASE_PATH}${pathSegments.join("/")}.mybr`;
       }
-
       function createContentCard(
         item,
         type,
@@ -415,7 +390,6 @@
         card.appendChild(bodyDiv);
         return card;
       }
-
       function displayGamesAsCards(games) {
         initialMessage.style.display = "none";
         dynamicContent.innerHTML = "";
@@ -430,24 +404,20 @@
           dynamicContent.appendChild(gameCard);
         });
       }
-
       function clearSelection() {
         document
           .querySelectorAll(".content-card.selected")
           .forEach((el) => el.classList.remove("selected"));
       }
-
       function findItemInStructure(pathSegments) {
         let currentLevel = currentData.games;
         let foundItem = null;
         let currentPathObjects = [];
         let gameIdForAudio = null;
         let categoryPathForAudio = [];
-
         for (let i = 0; i < pathSegments.length; i++) {
           const segmentId = pathSegments[i];
           let item = null;
-
           if (i === 0) {
             item = currentLevel.find((g) => g.id === segmentId);
             if (item) {
@@ -464,7 +434,6 @@
               currentLevel = item.categories || item.tracks;
             }
           }
-
           if (!item) {
             console.error(
               "Item not found in path:",
@@ -490,7 +459,6 @@
           categoryPath: categoryPathForAudio,
         };
       }
-
       function renderContent(contentItems, gameId, categoryPath = []) {
         dynamicContent.innerHTML = "";
         if (!contentItems || contentItems.length === 0) {
@@ -498,7 +466,6 @@
             '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No items available.</p>';
           return;
         }
-
         contentItems.forEach((item) => {
           const cardType =
             item.categories || item.tracks ? "category" : "track";
@@ -509,7 +476,6 @@
             categoryPath,
             currentSelectedGame ? currentSelectedGame.title : null
           );
-
           if (cardType === "category") {
             card.addEventListener("click", () => {
               clearSelection();
@@ -530,19 +496,15 @@
           dynamicContent.appendChild(card);
         });
       }
-
       async function selectTrack(track, gameTitle, pathSegments) {
-        mybrPlayer.stop();
         document
           .querySelectorAll(".content-card.selected")
           .forEach((el) => el.classList.remove("selected"));
-
         const currentlyRenderedTrackCard = dynamicContent.querySelector(
           `.content-card[data-track-id="${track.id}"]`
         );
         if (currentlyRenderedTrackCard) {
           currentlyRenderedTrackCard.classList.add("selected");
-          // Scroll to the selected track card
           currentlyRenderedTrackCard.scrollIntoView({
             behavior: "smooth",
             block: "nearest",
@@ -553,13 +515,11 @@
             track.id
           );
         }
-
         currentSelectedTrack = track;
         currentTrackPathSegments = pathSegments;
         playingTrackTitle.querySelector("span").textContent = track.title;
         playingGameTitle.querySelector("span").textContent =
           gameTitle || "Unknown Game";
-
         const gameIdForCover = pathSegments[0];
         const categoryPathForCover = pathSegments.slice(1, -1);
         currentTrackCover.src = generateCoverPath(
@@ -570,13 +530,11 @@
         );
         currentTrackCover.onerror = () =>
           (currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER);
-
         mybrPlayer.src = generateAudioPath(
           track,
           pathSegments[0],
           pathSegments.slice(1, -1)
         );
-
         try {
           await mybrPlayer._loadingPromise;
           applyTrackVolumes();
@@ -588,17 +546,14 @@
           console.error("Error loading or playing selected track:", e);
         }
       }
-
       function updateBreadcrumbs(pathSegments) {
         let breadcrumbsHtml = `<span class="breadcrumb-item" data-path='[]'><i class="fas fa-home"></i></span>`;
         let currentBreadcrumbSegments = [];
-
         pathSegments.forEach((segmentId, index) => {
           currentBreadcrumbSegments.push(segmentId);
           const { pathObjects } = findItemInStructure(
             currentBreadcrumbSegments
           );
-
           if (pathObjects.length > 0) {
             const currentItem = pathObjects[pathObjects.length - 1].object;
             if (currentItem) {
@@ -609,7 +564,6 @@
           }
         });
         breadcrumbs.innerHTML = breadcrumbsHtml;
-
         breadcrumbs.querySelectorAll(".breadcrumb-item").forEach((item) => {
           item.addEventListener("click", () => {
             const targetPath = JSON.parse(item.dataset.path);
@@ -617,48 +571,39 @@
           });
         });
       }
-
       function navigateTo(displayPathSegments, trackIdToHighlight = null) {
         let pathString = displayPathSegments.join("/");
         let newUrl = window.location.pathname;
         let queryParams = [];
-
         if (pathString) {
           queryParams.push(`path=${pathString}`);
         }
         if (trackIdToHighlight) {
           queryParams.push(`trackid=${trackIdToHighlight}`);
         }
-
         if (queryParams.length > 0) {
           newUrl += `?${queryParams.join("&")}`;
         }
-
         history.pushState(
           { path: displayPathSegments, trackId: trackIdToHighlight },
           "",
           newUrl
         );
-
-        checkUrlAndNavigate(); // Explicitly call to process the new URL
+        checkUrlAndNavigate();
       }
-
       function renderState(pathSegments) {
         currentSelectedGame = null;
-
         if (pathSegments.length === 0) {
           updateBreadcrumbs([]);
           displayGamesAsCards(currentData.games);
           return;
         }
-
         const {
           item: lastItem,
           currentContent,
           gameId,
           categoryPath,
         } = findItemInStructure(pathSegments);
-
         if (!lastItem || !gameId) {
           console.error(
             "Invalid path or game not found in path:",
@@ -668,9 +613,7 @@
           displayGamesAsCards(currentData.games);
           return;
         }
-
         updateBreadcrumbs(pathSegments);
-
         if (lastItem.tracks && lastItem.tracks.length > 0) {
           renderContent(lastItem.tracks, gameId, categoryPath);
         } else if (lastItem.categories && lastItem.categories.length > 0) {
@@ -690,18 +633,14 @@
             '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No content available here.</p>';
         }
       }
-
       function checkUrlAndNavigate() {
         const params = new URLSearchParams(window.location.search);
         const pathParam = params.get("path");
         const trackidParam = params.get("trackid");
-
         let displayPathSegments = pathParam
           ? pathParam.split("/").filter(Boolean)
           : [];
-
         renderState(displayPathSegments);
-
         if (trackidParam) {
           const fullPathSegmentsForTrack = [
             ...displayPathSegments,
@@ -721,6 +660,14 @@
               "Track object or game not found for URL:",
               fullPathSegmentsForTrack.join("/")
             );
+            mybrPlayer.stop();
+            currentSelectedTrack = null;
+            currentTrackPathSegments = [];
+            playingTrackTitle.querySelector("span").textContent = "Not playing";
+            playingGameTitle.querySelector("span").textContent = "Select a track";
+            currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+            checkTextOverflow(playingTrackTitle);
+            checkTextOverflow(playingGameTitle);
           }
         } else {
           mybrPlayer.stop();
@@ -734,13 +681,11 @@
         }
         updateUI(mybrPlayer.loop);
       }
-
       window.addEventListener("popstate", (event) => {
         if (event.state) {
           const displayPathSegments = event.state.path || [];
           const trackIdToHighlight = event.state.trackId || null;
           renderState(displayPathSegments);
-
           if (trackIdToHighlight) {
             const fullPathSegmentsForTrack = [
               ...displayPathSegments,
@@ -760,6 +705,14 @@
                 "Track object or game not found for popstate URL:",
                 fullPathSegmentsForTrack.join("/")
               );
+              mybrPlayer.stop();
+              currentSelectedTrack = null;
+              currentTrackPathSegments = [];
+              playingTrackTitle.querySelector("span").textContent = "Not playing";
+              playingGameTitle.querySelector("span").textContent = "Select a track";
+              currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+              checkTextOverflow(playingTrackTitle);
+              checkTextOverflow(playingGameTitle);
             }
           } else {
             mybrPlayer.stop();
@@ -777,7 +730,6 @@
         }
         updateUI(mybrPlayer.loop);
       });
-
       const resizeObserver = new ResizeObserver((entries) => {
         for (let entry of entries) {
           if (entry.target.id === "currentTrackDisplay") {
@@ -787,7 +739,6 @@
         }
       });
       resizeObserver.observe(document.getElementById("currentTrackDisplay"));
-
       updateUI(mybrPlayer.loop);
       loadSoundtrackData();
       checkTextOverflow(playingTrackTitle);
