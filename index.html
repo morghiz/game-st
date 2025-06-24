@@ -8,13 +8,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="main-content">
       <div class="header">
         <div id="breadcrumbs" class="breadcrumbs">
-              <i class="fas fa-home"></i></div>
+          <i class="fas fa-home"></i>
+        </div>
         <div></div>
       </div>
       <div class="content-area">
@@ -25,12 +26,22 @@
       <div class="player-bar">
         <div class="player-left">
           <div class="cover-container">
-            <img id="currentTrackCover" src="https://placehold.co/150x150" alt="Album Cover" class="track-cover-small"/>
+            <img
+              id="currentTrackCover"
+              src="https://placehold.co/150x150"
+              alt="Album Cover"
+              class="track-cover-small"
+            />
             <div id="loader" class="loader-container hidden">
               <div class="spinner"></div>
               <span id="loadingProgress">0%</span>
             </div>
-            <button id="playPauseBtnOverlay" class="play-overlay" disabled title="Play/Pause">
+            <button
+              id="playPauseBtnOverlay"
+              class="play-overlay"
+              disabled
+              title="Play/Pause"
+            >
               <i class="fas fa-play"></i>
             </button>
           </div>
@@ -47,10 +58,20 @@
             <button id="toggleLoopBtn" disabled title="Toggle Player Loop">
               <i class="fas fa-repeat"></i>
             </button>
-            <button id="toggle8bitBtn" class="hidden" disabled title="Toggle 8-bit Mode">
+            <button
+              id="toggle8bitBtn"
+              class="hidden"
+              disabled
+              title="Toggle 8-bit Mode"
+            >
               <i class="fas fa-gamepad"></i>
             </button>
-            <button id="toggleWaterBtn" class="hidden" disabled title="Toggle Water Mode">
+            <button
+              id="toggleWaterBtn"
+              class="hidden"
+              disabled
+              title="Toggle Water Mode"
+            >
               <i class="fas fa-water"></i>
             </button>
             <button id="shareBtn" disabled title="Share Current Track">
@@ -64,7 +85,9 @@
       import { MybrPlayer } from "./mybr-player-library.js";
       const mybrPlayer = new MybrPlayer();
       const playPauseBtn = document.getElementById("playPauseBtn");
-      const playPauseBtnOverlay = document.getElementById("playPauseBtnOverlay");
+      const playPauseBtnOverlay = document.getElementById(
+        "playPauseBtnOverlay"
+      );
       const toggleLoopBtn = document.getElementById("toggleLoopBtn");
       const dynamicContent = document.getElementById("dynamicContent");
       const initialMessage = document.getElementById("initialMessage");
@@ -84,11 +107,11 @@
       const DEFAULT_COVER_PLACEHOLDER = "https://placehold.co/150x150";
 
       function getFlagStateFromLocalStorage(id) {
-        const savedState = localStorage.getItem('flagsState');
+        const savedState = localStorage.getItem("flagsState");
         if (savedState) {
           try {
             const parsedState = JSON.parse(savedState);
-            const flag = parsedState.find(f => f.id === id);
+            const flag = parsedState.find((f) => f.id === id);
             return flag ? flag.isActive : false;
           } catch (e) {
             console.error("Error parsing flags state from localStorage:", e);
@@ -98,21 +121,34 @@
       }
 
       const FLAGS_CONFIG = [
-        { id: "8bit", buttonId: "toggle8bitBtn", iconClass: "fas fa-gamepad", isActive: getFlagStateFromLocalStorage("8bit") },
-        { id: "water", buttonId: "toggleWaterBtn", iconClass: "fas fa-water", isActive: getFlagStateFromLocalStorage("water") }
+        {
+          id: "8bit",
+          buttonId: "toggle8bitBtn",
+          iconClass: "fas fa-gamepad",
+          isActive: getFlagStateFromLocalStorage("8bit"),
+        },
+        {
+          id: "water",
+          buttonId: "toggleWaterBtn",
+          iconClass: "fas fa-water",
+          isActive: getFlagStateFromLocalStorage("water"),
+        },
       ];
 
       function saveFlagsState() {
-        const state = FLAGS_CONFIG.map(flag => ({ id: flag.id, isActive: flag.isActive }));
-        localStorage.setItem('flagsState', JSON.stringify(state));
+        const state = FLAGS_CONFIG.map((flag) => ({
+          id: flag.id,
+          isActive: flag.isActive,
+        }));
+        localStorage.setItem("flagsState", JSON.stringify(state));
       }
 
-      FLAGS_CONFIG.forEach(flag => {
+      FLAGS_CONFIG.forEach((flag) => {
         flag.element = document.getElementById(flag.buttonId);
         if (flag.element) {
           flag.element.addEventListener("click", () => {
             const wasActive = flag.isActive;
-            FLAGS_CONFIG.forEach(f => f.isActive = false);
+            FLAGS_CONFIG.forEach((f) => (f.isActive = false));
             if (!wasActive) {
               flag.isActive = true;
             }
@@ -124,13 +160,15 @@
       });
 
       function applyTrackVolumes() {
-        mybrPlayer.setTrackVolume('main', 1);
-        FLAGS_CONFIG.forEach(flag => mybrPlayer.setTrackVolume(flag.id, 0));
+        mybrPlayer.setTrackVolume("main", 1);
+        FLAGS_CONFIG.forEach((flag) => mybrPlayer.setTrackVolume(flag.id, 0));
 
         let activeFlagId = null;
         if (currentSelectedTrack) {
-          FLAGS_CONFIG.forEach(flag => {
-            const supportsFlag = currentSelectedTrack.flags && currentSelectedTrack.flags.includes(flag.id);
+          FLAGS_CONFIG.forEach((flag) => {
+            const supportsFlag =
+              currentSelectedTrack.flags &&
+              currentSelectedTrack.flags.includes(flag.id);
             if (flag.isActive && supportsFlag) {
               activeFlagId = flag.id;
             }
@@ -138,7 +176,7 @@
         }
 
         if (activeFlagId) {
-          mybrPlayer.setTrackVolume('main', 0);
+          mybrPlayer.setTrackVolume("main", 0);
           mybrPlayer.setTrackVolume(activeFlagId, 1);
         }
       }
@@ -150,8 +188,11 @@
         toggleLoopBtn.disabled = !hasTracks;
         shareBtn.disabled = !currentSelectedTrack;
 
-        FLAGS_CONFIG.forEach(flag => {
-          const supportsFlag = currentSelectedTrack && currentSelectedTrack.flags && currentSelectedTrack.flags.includes(flag.id);
+        FLAGS_CONFIG.forEach((flag) => {
+          const supportsFlag =
+            currentSelectedTrack &&
+            currentSelectedTrack.flags &&
+            currentSelectedTrack.flags.includes(flag.id);
           if (flag.element) {
             if (supportsFlag) {
               flag.element.classList.remove("hidden");
@@ -171,7 +212,7 @@
           ? '<i class="fas fa-pause"></i>'
           : '<i class="fas fa-play"></i>';
         toggleLoopBtn.style.color = playerLoopState ? "#1DB950" : "#ffffff";
-        
+
         if (!mybrPlayer._isPlaying && !currentSelectedTrack) {
           currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
         }
@@ -209,31 +250,34 @@
 
       mybrPlayer.addEventListener("ended", () => {
         if (!mybrPlayer.loop) {
-            currentSelectedTrack = null;
-            currentTrackPathSegments = [];
-            updateUI(mybrPlayer.loop);
-            playingTrackTitle.querySelector('span').textContent = "Not playing";
-            playingGameTitle.querySelector('span').textContent = "Select a track";
-            checkTextOverflow(playingTrackTitle);
-            checkTextOverflow(playingGameTitle);
+          currentSelectedTrack = null;
+          currentTrackPathSegments = [];
+          updateUI(mybrPlayer.loop);
+          playingTrackTitle.querySelector("span").textContent = "Not playing";
+          playingGameTitle.querySelector("span").textContent = "Select a track";
+          checkTextOverflow(playingTrackTitle);
+          checkTextOverflow(playingGameTitle);
         }
       });
       mybrPlayer.addEventListener("loadstart", () => {
-          loader.classList.remove('hidden');
-          playPauseBtnOverlay.classList.add('hidden');
-          loadingProgress.textContent = '0%';
+        loader.classList.remove("hidden");
+        playPauseBtnOverlay.classList.add("hidden");
+        loadingProgress.textContent = "0%";
       });
       mybrPlayer.addEventListener("loadprogress", (e) => {
-          loadingProgress.textContent = `${Math.min(Math.round(e.detail.progress), 100)}%`;
+        loadingProgress.textContent = `${Math.min(
+          Math.round(e.detail.progress),
+          100
+        )}%`;
       });
       mybrPlayer.addEventListener("canplaythrough", () => {
-          loader.classList.add('hidden');
-          playPauseBtnOverlay.classList.remove('hidden');
+        loader.classList.add("hidden");
+        playPauseBtnOverlay.classList.remove("hidden");
       });
       mybrPlayer.addEventListener("error", (e) => {
-          loader.classList.add('hidden');
-          playPauseBtnOverlay.classList.remove('hidden');
-          console.error("Player: error event - An error occurred", e);
+        loader.classList.add("hidden");
+        playPauseBtnOverlay.classList.remove("hidden");
+        console.error("Player: error event - An error occurred", e);
       });
 
       async function shareCurrentTrack() {
@@ -241,21 +285,25 @@
           console.warn("No track selected or Web Share API not supported.");
           return;
         }
-        
+
         const basePath = window.location.origin + window.location.pathname;
         let shareUrl = basePath;
 
         if (currentTrackPathSegments.length > 0) {
-            const trackId = currentTrackPathSegments[currentTrackPathSegments.length - 1];
-            const pathSegmentsWithoutTrack = currentTrackPathSegments.slice(0, -1);
-            
-            let queryParams = [];
-            if (pathSegmentsWithoutTrack.length > 0) {
-                queryParams.push(`path=${pathSegmentsWithoutTrack.join('/')}`);
-            }
-            queryParams.push(`trackid=${trackId}`);
+          const trackId =
+            currentTrackPathSegments[currentTrackPathSegments.length - 1];
+          const pathSegmentsWithoutTrack = currentTrackPathSegments.slice(
+            0,
+            -1
+          );
 
-            shareUrl += `?${queryParams.join('&')}`;
+          let queryParams = [];
+          if (pathSegmentsWithoutTrack.length > 0) {
+            queryParams.push(`path=${pathSegmentsWithoutTrack.join("/")}`);
+          }
+          queryParams.push(`trackid=${trackId}`);
+
+          shareUrl += `?${queryParams.join("&")}`;
         }
 
         try {
@@ -273,20 +321,20 @@
       shareBtn.addEventListener("click", shareCurrentTrack);
 
       function checkTextOverflow(parentElement) {
-          const textSpan = parentElement.querySelector('span');
-          if (textSpan) {
-              if (textSpan.offsetParent === null) {
-                parentElement.classList.remove('marquee-active');
-                textSpan.style.transform = 'translateX(0)';
-                return;
-              }
-              if (textSpan.scrollWidth > parentElement.clientWidth) {
-                  parentElement.classList.add('marquee-active');
-              } else {
-                  parentElement.classList.remove('marquee-active');
-                  textSpan.style.transform = 'translateX(0)';
-              }
+        const textSpan = parentElement.querySelector("span");
+        if (textSpan) {
+          if (textSpan.offsetParent === null) {
+            parentElement.classList.remove("marquee-active");
+            textSpan.style.transform = "translateX(0)";
+            return;
           }
+          if (textSpan.scrollWidth > parentElement.clientWidth) {
+            parentElement.classList.add("marquee-active");
+          } else {
+            parentElement.classList.remove("marquee-active");
+            textSpan.style.transform = "translateX(0)";
+          }
+        }
       }
 
       async function loadSoundtrackData() {
@@ -306,13 +354,13 @@
       function generateCoverPath(item, type, gameId = null, categoryPath = []) {
         let pathSegments = [];
         if (gameId) {
-            pathSegments.push(gameId);
+          pathSegments.push(gameId);
         }
         if (categoryPath.length > 0) {
-            pathSegments.push(...categoryPath);
+          pathSegments.push(...categoryPath);
         }
-        if (type === 'game' && item && item.id) {
-            return `${COVERS_BASE_PATH}${item.id}.png`;
+        if (type === "game" && item && item.id) {
+          return `${COVERS_BASE_PATH}${item.id}.png`;
         }
         return `${COVERS_BASE_PATH}${pathSegments.join("/")}/${item.id}.png`;
       }
@@ -321,13 +369,19 @@
         let pathSegments = [];
         pathSegments.push(gameId);
         if (categoryPath.length > 0) {
-            pathSegments.push(...categoryPath);
+          pathSegments.push(...categoryPath);
         }
         pathSegments.push(track.id);
         return `${AUDIO_BASE_PATH}${pathSegments.join("/")}.mybr`;
       }
 
-      function createContentCard(item, type, gameId = null, categoryPath = [], gameTitle = null) {
+      function createContentCard(
+        item,
+        type,
+        gameId = null,
+        categoryPath = [],
+        gameTitle = null
+      ) {
         const card = document.createElement("div");
         card.className = "content-card";
         const imageContainer = document.createElement("div");
@@ -391,33 +445,50 @@
         let categoryPathForAudio = [];
 
         for (let i = 0; i < pathSegments.length; i++) {
-            const segmentId = pathSegments[i];
-            let item = null;
+          const segmentId = pathSegments[i];
+          let item = null;
 
-            if (i === 0) {
-                item = currentLevel.find(g => g.id === segmentId);
-                if (item) {
-                    gameIdForAudio = item.id;
-                    currentSelectedGame = item;
-                    currentPathObjects.push({type: "game", object: item});
-                    currentLevel = item.categories || item.tracks;
-                }
-            } else {
-                item = currentLevel.find(c => c.id === segmentId);
-                if (item) {
-                    categoryPathForAudio.push(item.id);
-                    currentPathObjects.push({type: "category", object: item});
-                    currentLevel = item.categories || item.tracks;
-                }
+          if (i === 0) {
+            item = currentLevel.find((g) => g.id === segmentId);
+            if (item) {
+              gameIdForAudio = item.id;
+              currentSelectedGame = item;
+              currentPathObjects.push({ type: "game", object: item });
+              currentLevel = item.categories || item.tracks;
             }
+          } else {
+            item = currentLevel.find((c) => c.id === segmentId);
+            if (item) {
+              categoryPathForAudio.push(item.id);
+              currentPathObjects.push({ type: "category", object: item });
+              currentLevel = item.categories || item.tracks;
+            }
+          }
 
-            if (!item) {
-                console.error("Item not found in path:", segmentId, "at level:", currentLevel);
-                return { item: null, currentContent: null, pathObjects: [], gameId: null, categoryPath: [] };
-            }
-            foundItem = item;
+          if (!item) {
+            console.error(
+              "Item not found in path:",
+              segmentId,
+              "at level:",
+              currentLevel
+            );
+            return {
+              item: null,
+              currentContent: null,
+              pathObjects: [],
+              gameId: null,
+              categoryPath: [],
+            };
+          }
+          foundItem = item;
         }
-        return { item: foundItem, currentContent: currentLevel, pathObjects: currentPathObjects, gameId: gameIdForAudio, categoryPath: categoryPathForAudio };
+        return {
+          item: foundItem,
+          currentContent: currentLevel,
+          pathObjects: currentPathObjects,
+          gameId: gameIdForAudio,
+          categoryPath: categoryPathForAudio,
+        };
       }
 
       function renderContent(contentItems, gameId, categoryPath = []) {
@@ -429,7 +500,8 @@
         }
 
         contentItems.forEach((item) => {
-          const cardType = (item.categories || item.tracks) ? "category" : "track";
+          const cardType =
+            item.categories || item.tracks ? "category" : "track";
           const card = createContentCard(
             item,
             cardType,
@@ -442,7 +514,10 @@
             card.addEventListener("click", () => {
               clearSelection();
               card.classList.add("selected");
-              const currentUrlPath = window.location.search.replace('?path=', '').split('/').filter(Boolean);
+              const currentUrlPath = window.location.search
+                .replace("?path=", "")
+                .split("/")
+                .filter(Boolean);
               const newPath = [...currentUrlPath, item.id];
               navigateTo(newPath);
             });
@@ -458,33 +533,54 @@
 
       async function selectTrack(track, gameTitle, pathSegments) {
         mybrPlayer.stop();
-        document.querySelectorAll(".content-card.selected").forEach((el) => el.classList.remove("selected"));
-        
-        const currentlyRenderedTrackCard = dynamicContent.querySelector(`.content-card[data-track-id="${track.id}"]`);
+        document
+          .querySelectorAll(".content-card.selected")
+          .forEach((el) => el.classList.remove("selected"));
+
+        const currentlyRenderedTrackCard = dynamicContent.querySelector(
+          `.content-card[data-track-id="${track.id}"]`
+        );
         if (currentlyRenderedTrackCard) {
-            currentlyRenderedTrackCard.classList.add("selected");
-            // Scroll to the selected track card
-            currentlyRenderedTrackCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          currentlyRenderedTrackCard.classList.add("selected");
+          // Scroll to the selected track card
+          currentlyRenderedTrackCard.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+          });
         } else {
-            console.warn("Could not find current rendered track card for visual selection:", track.id);
+          console.warn(
+            "Could not find current rendered track card for visual selection:",
+            track.id
+          );
         }
 
         currentSelectedTrack = track;
         currentTrackPathSegments = pathSegments;
-        playingTrackTitle.querySelector('span').textContent = track.title;
-        playingGameTitle.querySelector('span').textContent = gameTitle || "Unknown Game";
-        
+        playingTrackTitle.querySelector("span").textContent = track.title;
+        playingGameTitle.querySelector("span").textContent =
+          gameTitle || "Unknown Game";
+
         const gameIdForCover = pathSegments[0];
         const categoryPathForCover = pathSegments.slice(1, -1);
-        currentTrackCover.src = generateCoverPath(track, "track", gameIdForCover, categoryPathForCover);
-        currentTrackCover.onerror = () => currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+        currentTrackCover.src = generateCoverPath(
+          track,
+          "track",
+          gameIdForCover,
+          categoryPathForCover
+        );
+        currentTrackCover.onerror = () =>
+          (currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER);
 
-        mybrPlayer.src = generateAudioPath(track, pathSegments[0], pathSegments.slice(1, -1));
+        mybrPlayer.src = generateAudioPath(
+          track,
+          pathSegments[0],
+          pathSegments.slice(1, -1)
+        );
 
         try {
           await mybrPlayer._loadingPromise;
-          applyTrackVolumes(); 
-          updateUI(mybrPlayer.loop); 
+          applyTrackVolumes();
+          updateUI(mybrPlayer.loop);
           await mybrPlayer.play();
           checkTextOverflow(playingTrackTitle);
           checkTextOverflow(playingGameTitle);
@@ -498,44 +594,52 @@
         let currentBreadcrumbSegments = [];
 
         pathSegments.forEach((segmentId, index) => {
-            currentBreadcrumbSegments.push(segmentId);
-            const { pathObjects } = findItemInStructure(currentBreadcrumbSegments);
+          currentBreadcrumbSegments.push(segmentId);
+          const { pathObjects } = findItemInStructure(
+            currentBreadcrumbSegments
+          );
 
-            if (pathObjects.length > 0) {
-                const currentItem = pathObjects[pathObjects.length - 1].object;
-                if (currentItem) {
-                    breadcrumbsHtml += ` &gt; <span class="breadcrumb-item" data-path='${JSON.stringify(currentBreadcrumbSegments)}'>${currentItem.title || currentItem.name}</span>`;
-                }
+          if (pathObjects.length > 0) {
+            const currentItem = pathObjects[pathObjects.length - 1].object;
+            if (currentItem) {
+              breadcrumbsHtml += ` &gt; <span class="breadcrumb-item" data-path='${JSON.stringify(
+                currentBreadcrumbSegments
+              )}'>${currentItem.title || currentItem.name}</span>`;
             }
+          }
         });
         breadcrumbs.innerHTML = breadcrumbsHtml;
 
-        breadcrumbs.querySelectorAll('.breadcrumb-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const targetPath = JSON.parse(item.dataset.path);
-                navigateTo(targetPath);
-            });
+        breadcrumbs.querySelectorAll(".breadcrumb-item").forEach((item) => {
+          item.addEventListener("click", () => {
+            const targetPath = JSON.parse(item.dataset.path);
+            navigateTo(targetPath);
+          });
         });
       }
 
       function navigateTo(displayPathSegments, trackIdToHighlight = null) {
-        let pathString = displayPathSegments.join('/');
+        let pathString = displayPathSegments.join("/");
         let newUrl = window.location.pathname;
         let queryParams = [];
 
         if (pathString) {
-            queryParams.push(`path=${pathString}`);
+          queryParams.push(`path=${pathString}`);
         }
         if (trackIdToHighlight) {
-            queryParams.push(`trackid=${trackIdToHighlight}`);
+          queryParams.push(`trackid=${trackIdToHighlight}`);
         }
 
         if (queryParams.length > 0) {
-            newUrl += `?${queryParams.join('&')}`;
+          newUrl += `?${queryParams.join("&")}`;
         }
-        
-        history.pushState({ path: displayPathSegments, trackId: trackIdToHighlight }, "", newUrl);
-        
+
+        history.pushState(
+          { path: displayPathSegments, trackId: trackIdToHighlight },
+          "",
+          newUrl
+        );
+
         checkUrlAndNavigate(); // Explicitly call to process the new URL
       }
 
@@ -543,107 +647,146 @@
         currentSelectedGame = null;
 
         if (pathSegments.length === 0) {
-            updateBreadcrumbs([]);
-            displayGamesAsCards(currentData.games);
-            return;
+          updateBreadcrumbs([]);
+          displayGamesAsCards(currentData.games);
+          return;
         }
 
-        const { item: lastItem, currentContent, gameId, categoryPath } = findItemInStructure(pathSegments);
+        const {
+          item: lastItem,
+          currentContent,
+          gameId,
+          categoryPath,
+        } = findItemInStructure(pathSegments);
 
         if (!lastItem || !gameId) {
-            console.error("Invalid path or game not found in path:", pathSegments);
-            updateBreadcrumbs([]);
-            displayGamesAsCards(currentData.games);
-            return;
+          console.error(
+            "Invalid path or game not found in path:",
+            pathSegments
+          );
+          updateBreadcrumbs([]);
+          displayGamesAsCards(currentData.games);
+          return;
         }
 
         updateBreadcrumbs(pathSegments);
 
         if (lastItem.tracks && lastItem.tracks.length > 0) {
-            renderContent(lastItem.tracks, gameId, categoryPath);
+          renderContent(lastItem.tracks, gameId, categoryPath);
         } else if (lastItem.categories && lastItem.categories.length > 0) {
-            renderContent(lastItem.categories, gameId, categoryPath);
+          renderContent(lastItem.categories, gameId, categoryPath);
         } else if (lastItem.tracks && lastItem.tracks.length === 0) {
-            dynamicContent.innerHTML = '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No tracks available in this category.</p>';
-        }
-        else if (lastItem.categories && lastItem.categories.length === 0) {
-            dynamicContent.innerHTML = '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No subcategories available here.</p>';
-        }
-        else {
-            console.error("No content (tracks or categories) found at the end of the path:", lastItem);
-            dynamicContent.innerHTML = '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No content available here.</p>';
+          dynamicContent.innerHTML =
+            '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No tracks available in this category.</p>';
+        } else if (lastItem.categories && lastItem.categories.length === 0) {
+          dynamicContent.innerHTML =
+            '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No subcategories available here.</p>';
+        } else {
+          console.error(
+            "No content (tracks or categories) found at the end of the path:",
+            lastItem
+          );
+          dynamicContent.innerHTML =
+            '<p style="color:#b3b3b3;text-align:center;padding:2.5rem 0;">No content available here.</p>';
         }
       }
 
       function checkUrlAndNavigate() {
-          const params = new URLSearchParams(window.location.search);
-          const pathParam = params.get("path");
-          const trackidParam = params.get("trackid");
+        const params = new URLSearchParams(window.location.search);
+        const pathParam = params.get("path");
+        const trackidParam = params.get("trackid");
 
-          let displayPathSegments = pathParam ? pathParam.split('/').filter(Boolean) : [];
-          
-          renderState(displayPathSegments);
+        let displayPathSegments = pathParam
+          ? pathParam.split("/").filter(Boolean)
+          : [];
 
-          if (trackidParam) {
-              const fullPathSegmentsForTrack = [...displayPathSegments, trackidParam];
-              const { item: selectedTrackObject, gameId } = findItemInStructure(fullPathSegmentsForTrack);
-              if (selectedTrackObject && gameId) {
-                  selectTrack(selectedTrackObject, findItemInStructure([gameId]).item.title, fullPathSegmentsForTrack);
-              } else {
-                console.warn("Track object or game not found for URL:", fullPathSegmentsForTrack.join('/'));
-              }
+        renderState(displayPathSegments);
+
+        if (trackidParam) {
+          const fullPathSegmentsForTrack = [
+            ...displayPathSegments,
+            trackidParam,
+          ];
+          const { item: selectedTrackObject, gameId } = findItemInStructure(
+            fullPathSegmentsForTrack
+          );
+          if (selectedTrackObject && gameId) {
+            selectTrack(
+              selectedTrackObject,
+              findItemInStructure([gameId]).item.title,
+              fullPathSegmentsForTrack
+            );
           } else {
-              mybrPlayer.stop();
-              currentSelectedTrack = null;
-              currentTrackPathSegments = [];
-              playingTrackTitle.querySelector('span').textContent = "Not playing";
-              playingGameTitle.querySelector('span').textContent = "Select a track";
-              currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
-              checkTextOverflow(playingTrackTitle);
-              checkTextOverflow(playingGameTitle);
+            console.warn(
+              "Track object or game not found for URL:",
+              fullPathSegmentsForTrack.join("/")
+            );
           }
-          updateUI(mybrPlayer.loop);
+        } else {
+          mybrPlayer.stop();
+          currentSelectedTrack = null;
+          currentTrackPathSegments = [];
+          playingTrackTitle.querySelector("span").textContent = "Not playing";
+          playingGameTitle.querySelector("span").textContent = "Select a track";
+          currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+          checkTextOverflow(playingTrackTitle);
+          checkTextOverflow(playingGameTitle);
+        }
+        updateUI(mybrPlayer.loop);
       }
 
       window.addEventListener("popstate", (event) => {
         if (event.state) {
-            const displayPathSegments = event.state.path || [];
-            const trackIdToHighlight = event.state.trackId || null;
-            renderState(displayPathSegments);
+          const displayPathSegments = event.state.path || [];
+          const trackIdToHighlight = event.state.trackId || null;
+          renderState(displayPathSegments);
 
-            if (trackIdToHighlight) {
-                const fullPathSegmentsForTrack = [...displayPathSegments, trackIdToHighlight];
-                const { item: selectedTrackObject, gameId } = findItemInStructure(fullPathSegmentsForTrack);
-                if (selectedTrackObject && gameId) {
-                    selectTrack(selectedTrackObject, findItemInStructure([gameId]).item.title, fullPathSegmentsForTrack);
-                } else {
-                  console.warn("Track object or game not found for popstate URL:", fullPathSegmentsForTrack.join('/'));
-                }
+          if (trackIdToHighlight) {
+            const fullPathSegmentsForTrack = [
+              ...displayPathSegments,
+              trackIdToHighlight,
+            ];
+            const { item: selectedTrackObject, gameId } = findItemInStructure(
+              fullPathSegmentsForTrack
+            );
+            if (selectedTrackObject && gameId) {
+              selectTrack(
+                selectedTrackObject,
+                findItemInStructure([gameId]).item.title,
+                fullPathSegmentsForTrack
+              );
             } else {
-                mybrPlayer.stop();
-                currentSelectedTrack = null;
-                currentTrackPathSegments = [];
-                playingTrackTitle.querySelector('span').textContent = "Not playing";
-                playingGameTitle.querySelector('span').textContent = "Select a track";
-                currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
-                checkTextOverflow(playingTrackTitle);
-                checkTextOverflow(playingGameTitle);
+              console.warn(
+                "Track object or game not found for popstate URL:",
+                fullPathSegmentsForTrack.join("/")
+              );
             }
+          } else {
+            mybrPlayer.stop();
+            currentSelectedTrack = null;
+            currentTrackPathSegments = [];
+            playingTrackTitle.querySelector("span").textContent = "Not playing";
+            playingGameTitle.querySelector("span").textContent =
+              "Select a track";
+            currentTrackCover.src = DEFAULT_COVER_PLACEHOLDER;
+            checkTextOverflow(playingTrackTitle);
+            checkTextOverflow(playingGameTitle);
+          }
         } else {
           checkUrlAndNavigate();
         }
         updateUI(mybrPlayer.loop);
       });
 
-      const resizeObserver = new ResizeObserver(entries => {
-          for (let entry of entries) {
-              if (entry.target.id === 'currentTrackDisplay') {
-                  checkTextOverflow(playingTrackTitle);
-                  checkTextOverflow(playingGameTitle);
-              }
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (let entry of entries) {
+          if (entry.target.id === "currentTrackDisplay") {
+            checkTextOverflow(playingTrackTitle);
+            checkTextOverflow(playingGameTitle);
           }
+        }
       });
-      resizeObserver.observe(document.getElementById('currentTrackDisplay'));
+      resizeObserver.observe(document.getElementById("currentTrackDisplay"));
 
       updateUI(mybrPlayer.loop);
       loadSoundtrackData();

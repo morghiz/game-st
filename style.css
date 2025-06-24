@@ -4,12 +4,12 @@ body {
   font-family: "Gabarito", "Inter", sans-serif;
   background-color: #121212;
   color: #fff;
-  display: flex;
-  min-height: 100svh;
-  flex-direction: column;
+  height: 100svh !important;
+  max-height: 100svh !important;
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+  overflow: auto; /* Permetti lo scrolling sul body */
 }
 
 * {
@@ -17,19 +17,21 @@ body {
 }
 
 .main-content {
-  flex-grow: 1;
+  /* Non è più flex-grow: 1, il suo height sarà gestito da padding-bottom del body */
   display: flex;
   flex-direction: column;
   background-color: #181818;
-  overflow-y: auto;
   position: relative;
   width: 100%;
+  min-height: calc(100svh - 80px); /* Assicurati che il contenuto sia abbastanza lungo per lo scroll, 80px è un'altezza ipotetica della player-bar */
+  padding-bottom: 90px; /* Lascia spazio per la player-bar fissa sotto */
+  box-sizing: border-box;
 }
 
 .header {
   padding: 0.6rem 1rem;
-  background-color: #121212;
-  border-bottom: 1px solid #282828;
+  background-color: #121212b2;
+  backdrop-filter: blur(10px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -52,17 +54,22 @@ body {
 }
 
 .player-bar {
-  background-color: #282828;
+  background-color: #2828288a;
+  backdrop-filter: blur(10px);
   padding: 1rem;
   display: flex;
   align-items: center;
-  border-top: 1px solid #3a3a3a;
-  position: sticky;
+  position: fixed; /* Cambiato a fixed */
   bottom: 0;
+  left: 0; /* Aggiunto left e right per coprire tutta la larghezza */
+  right: 0;
   z-index: 20;
   flex-shrink: 0;
   justify-content: space-between;
   gap: 1rem;
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .player-left {
@@ -250,27 +257,24 @@ button .fas {
   text-overflow: clip;
   animation: none;
   padding-right: 0;
-  display: flex; /* Rendi il P un contenitore flex */
+  display: flex;
   width: 100%;
   position: relative;
 }
 
-/* Regole per lo SPAN interno */
 #playingTrackTitle span,
 #playingGameTitle span {
   display: inline-block;
   white-space: nowrap;
   width: auto;
   flex-shrink: 0;
-  /* L'animazione sarà applicata solo quando la classe 'marquee-active' è presente */
   animation: none;
   animation-play-state: paused;
 }
 
-/* Applica l'animazione solo quando la classe 'marquee-active' è presente */
 #playingTrackTitle.marquee-active span,
 #playingGameTitle.marquee-active span {
-  animation: marquee 10s linear infinite; /* Riattiva l'animazione */
+  animation: marquee 10s linear infinite;
   animation-play-state: running;
 }
 
@@ -286,7 +290,6 @@ button .fas {
   font-weight: normal;
 }
 
-/* KEYFRAMES per lo scorrimento del testo */
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(calc(-100% - 20px)); }
@@ -309,22 +312,12 @@ button .fas {
   }
 
   .content-area {
-    padding: 1rem 1.5rem;
+    padding: 0 1.5rem 2rem 1.5rem;
   }
 
   .player-bar {
     padding: 0.6rem;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
     gap: 0.5rem;
-    position: sticky;
-    bottom: 0;
-    width: 100%;
-    box-sizing: border-box;
-    border-top: none;
-    background-color: #282828;
-    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
   }
 
   .cover-container {
@@ -390,7 +383,7 @@ button .fas {
   align-items: center;
   color: white;
   z-index: 10;
-  border-radius: 4px; /* Match cover radius */
+  border-radius: 4px;
 }
 
 .spinner {
